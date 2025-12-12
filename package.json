@@ -10,9 +10,9 @@
     "react-dom": "^18.2.0",
     "xlsx": "^0.18.5"
   },
-  "scripts": {
+ "scripts": {
   "start": "react-scripts start",
-  "build": "node --max-old-space-size=4096 node_modules/react-scripts/scripts/build.js",
+  "build": "react-scripts build", 
   "test": "react-scripts test",
   "eject": "react-scripts eject"
 },
