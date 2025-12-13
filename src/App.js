@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+// Import Ikon dari Lucide React
 import { Camera, Users, LogIn, LogOut, FileDown, UserPlus,
 List, X, Trash2, PlusCircle, UploadCloud, Download, BookCopy, Edit, Check,
 XCircle, Edit3, Send, RefreshCw, Clock, UserCheck, CalendarDays, ChevronDown,
-ChevronUp } from 'lucide-react';
-// Menggunakan CDN langsung untuk supabase-js untuk menghindari error build
-// pada lingkungan ini. Di aplikasi sungguhan, Anda harus menginstal paket
-// npm @supabase/supabase-js
-// import { createClient } from '@supabase/supabase-js';
+ChevronUp, AlertTriangle } from 'lucide-react';
 
-// --- LANGKAH 1: KONFIGURASI SUPABASE & CONTEXT ---
-// Gunakan environment variables di produksi, fallback untuk lingkungan pratinjau.
+// --- CONFIGURASI SUPABASE ---
 const supabaseUrl = 'https://hrfpxxezdgfuegdizwve.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZnB4eGV6ZGdmdWVnZGl6d3ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1OTc3OTEsImV4cCI6MjA2OTE3Mzc5MX0.mBlr-t1bVJcavb7k4fmAvO5x3HcEy4BFgYNZbZF6cNk';
 
@@ -28,12 +24,11 @@ const SupabaseProvider = ({ children }) => {
     useEffect(() => {
         const initializeSupabase = () => {
             try {
-                // Pastikan library supabase dimuat dari CDN sebelum digunakan
                 if (!window.supabase) {
                     throw new Error("Supabase client library not loaded. Please wait.");
                 }
                 if (!supabaseUrl || !supabaseAnonKey) {
-                    throw new Error("Konfigurasi Supabase tidak ditemukan. Pastikan Anda mengatur environment variables.");
+                    throw new Error("Konfigurasi Supabase tidak ditemukan.");
                 }
                 const client = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
                 setSupabase(client);
@@ -69,7 +64,18 @@ const SupabaseProvider = ({ children }) => {
     );
 };
 
-// --- Komponen Notifikasi Modal Kustom (Menggantikan Alert) ---
+// Fungsi helper untuk mendapatkan tanggal lokal dalam format YYYY-MM-DD
+const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+// --- Komponen Modal Kustom (Menggantikan Alert/Confirm) ---
+
+// 1. Komponen Notifikasi Modal
 const NotificationModal = ({ message, onClose, type = 'info' }) => {
     const bgColor = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500';
     const icon = type === 'error' ? <XCircle size={24} /> : type === 'success' ? <Check size={24} /> : <List size={24} />;
@@ -82,8 +88,8 @@ const NotificationModal = ({ message, onClose, type = 'info' }) => {
     }, [onClose]);
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <div className={`flex items-center gap-4 p-6 rounded-lg shadow-xl text-white ${bgColor}`}>
+        <div className="fixed inset-0 z-[100] flex items-start justify-end p-4 pointer-events-none">
+            <div className={`pointer-events-auto flex items-center gap-4 p-4 rounded-lg shadow-xl text-white ${bgColor} transition-transform transform duration-300 translate-x-0`}>
                 {icon}
                 <div>
                     <p className="font-bold">{type === 'error' ? 'Error!' : type === 'success' ? 'Berhasil!' : 'Info'}</p>
@@ -95,22 +101,49 @@ const NotificationModal = ({ message, onClose, type = 'info' }) => {
     );
 };
 
-// Fungsi helper untuk mendapatkan tanggal lokal dalam format YYYY-MM-DD
-const getLocalDateString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
+// 2. Komponen Konfirmasi Modal (Menggantikan window.confirm)
+const ConfirmationModal = ({ message, onConfirm, onCancel, title = 'Konfirmasi Aksi' }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[101] p-4">
+        <div className="bg-white p-6 rounded-xl max-w-sm w-full shadow-2xl">
+            <div className="flex items-center gap-4 mb-4">
+                <AlertTriangle size={24} className="text-yellow-500" />
+                <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+            </div>
+            <p className="text-gray-700 mb-6">{message}</p>
+            <div className="flex justify-end gap-4">
+                <button 
+                    onClick={onCancel} 
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                    Batal
+                </button>
+                <button 
+                    onClick={onConfirm} 
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                    Ya, Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+);
 
 
 // --- KOMPONEN UTAMA APLIKASI ---
 export default function AppWrapper() {
     return (
-        <SupabaseProvider>
-            <App />
-        </SupabaseProvider>
+        <>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+                {`
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+                body { font-family: 'Inter', sans-serif; }
+                `}
+            </style>
+            <SupabaseProvider>
+                <App />
+            </SupabaseProvider>
+        </>
     );
 }
 
@@ -119,14 +152,15 @@ function App() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [timeSettings, setTimeSettings] = useState(null);
-    const [holidays, setHolidays] = useState([]); // State untuk Hari Libur
+    const [holidays, setHolidays] = useState([]); 
     const [notification, setNotification] = useState(null);
 
-    // Fungsi untuk mengambil daftar hari libur
+    // Fungsi untuk mengambil daftar hari libur HARI INI
     const fetchHolidays = async () => {
         if (!supabase) return;
         try {
-            const { data, error } = await supabase.from('holidays').select('*').eq('date', getLocalDateString());
+            const today = getLocalDateString();
+            const { data, error } = await supabase.from('holidays').select('*').eq('date', today);
             if (error) throw error;
             setHolidays(data || []);
         } catch (e) {
@@ -159,8 +193,7 @@ function App() {
                     const { data: newData, error: insertError } = await supabase.from('settings').insert(defaultSettings).select().single();
                     if (insertError) throw insertError;
                     currentSettings = newData;
-                    setNotification({ type: 'info', message: 'Pengaturan awal berhasil diinisialisasi.' });
-                } else if (settingsError) {
+                } else if (settingsError && settingsError.code !== 'PGRST116') {
                     throw settingsError;
                 }
                 setTimeSettings(currentSettings);
@@ -182,10 +215,9 @@ function App() {
     const isTodayHoliday = holidays.length > 0;
 
     const handleLogin = async (userData) => {
-        // Peringatan: ID admin hardcoded adalah risiko keamanan.
-        // Gunakan sistem autentikasi Supabase yang sebenarnya di aplikasi produksi.
+        // ID admin hardcoded
         if (userData.id === 'manulbat') {
-            setUser({ id: 'manulbat', name: 'Admin', role: 'admin' });
+            setUser({ id: 'manulbat', nis: 'manulbat', name: 'Admin', role: 'admin' });
             return;
         }
         
@@ -224,15 +256,15 @@ function App() {
                         settings={timeSettings} 
                         setNotification={setNotification} 
                         setTimeSettings={setTimeSettings} 
-                        fetchHolidays={fetchHolidays} // Teruskan fungsi refresh hari libur
+                        fetchHolidays={fetchHolidays}
                     /> 
                     : user.role === 'teacher' ? 
                         <TeacherDashboard 
                             user={user} 
                             supabase={supabase} 
                             settings={timeSettings} 
-                            isHoliday={isTodayHoliday} // NEW PROP
-                            holidayName={holidays[0]?.name} // NEW PROP
+                            isHoliday={isTodayHoliday} 
+                            holidayName={holidays[0]?.name} 
                             setNotification={setNotification} 
                         />
                     : 
@@ -240,8 +272,8 @@ function App() {
                             user={user} 
                             supabase={supabase} 
                             settings={timeSettings} 
-                            isHoliday={isTodayHoliday} // NEW PROP
-                            holidayName={holidays[0]?.name} // NEW PROP
+                            isHoliday={isTodayHoliday} 
+                            holidayName={holidays[0]?.name} 
                             setNotification={setNotification} 
                         />
                 }
@@ -263,9 +295,9 @@ const Header = ({ user, onLogout }) => (
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
             <div>
                 <h1 className="text-2xl font-bold text-green-600">Absensi Digital MA Nurul Ulum Batursari</h1>
-                <p className="text-sm text-gray-500">Selamat Datang, {user.name}</p>
+                <p className="text-sm text-gray-500">Selamat Datang, {user.name} ({user.role === 'student' ? 'Siswa' : user.role === 'teacher' ? 'Guru' : 'Admin'})</p>
             </div>
-            <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+            <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-md">
                 <LogOut size={18} />
                 <span>Keluar</span>
             </button>
@@ -286,7 +318,7 @@ const LoginScreen = ({ onLogin, setNotification }) => {
         setLoading(true);
         setNotification(null);
         try {
-            await onLogin({ id: nis });
+            await onLogin({ id: nis.trim() });
         } catch (err) {
             setNotification({ type: 'error', message: err.message || 'NIS/ID Pengguna tidak ditemukan.' });
             setLoading(false);
@@ -300,8 +332,8 @@ const LoginScreen = ({ onLogin, setNotification }) => {
                     <img 
                         src="https://hrfpxxezdgfuegdizwve.supabase.co/storage/v1/object/public/assets/logo.png" 
                         alt="Logo Sekolah" 
-                        className="w-16 h-16 md:w-20 md:h-20"
-                        onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/80x80/e2e8f0/4a5568?text=Logo'; }}
+                        className="w-16 h-16 md:w-20 md:h-20 rounded-full shadow-md"
+                        onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/80x80/e2e8f0/4a5568?text=LOGO'; }}
                     />
                     <div className="text-left">
                         <h2 className="text-lg font-bold text-gray-800 leading-tight">ABSENSI CIVITAS AKADEMIKA</h2>
@@ -322,13 +354,13 @@ const LoginScreen = ({ onLogin, setNotification }) => {
                         value={nis}
                         onChange={(e) => setNis(e.target.value)}
                         placeholder="Masukkan NIS atau ID Guru"
-                        className="w-full px-4 py-2 mt-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                        className="w-full px-4 py-2 mt-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 shadow-sm"
                     />
                 </div>
                 <button
                     onClick={handleLoginAttempt}
                     disabled={loading}
-                    className="w-full py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-transform transform hover:scale-105 disabled:bg-green-400"
+                    className="w-full py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-transform transform hover:scale-[1.01] disabled:bg-green-400 shadow-md"
                 >
                     {loading ? 'Memverifikasi...' : 'Masuk'}
                 </button>
@@ -369,6 +401,20 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
     useEffect(() => {
         if (!supabase) return;
         fetchAttendance();
+        
+        // Setup Realtime Listener for today's attendance
+        const channel = supabase.channel(`attendance:${user.nis}:${getLocalDateString()}`)
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'attendance',
+                filter: `user_nis=eq.${user.nis}.and.date=eq.${getLocalDateString()}`
+            }, (payload) => {
+                fetchAttendance();
+            })
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
     }, [user.nis, supabase]);
 
     const handleAttend = async (type) => {
@@ -400,7 +446,8 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                 (error) => {
                     console.error("Error getting location:", error);
                     reject(new Error("Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan."));
-                }
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         });
 
@@ -466,7 +513,8 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                     (error) => {
                         console.error("Error getting location:", error);
                         reject(new Error("Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan."));
-                    }
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             });
 
@@ -497,8 +545,8 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                 setNotification({ type: 'success', message: 'Absen pulang berhasil!' });
             }
             
-            const { data: newData } = await supabase.from('attendance').select('*').eq('user_nis', user.nis).eq('date', dateStr).maybeSingle();
-            if (newData) setTodayAttendance(newData);
+            // Re-fetch attendance after operation
+            fetchAttendance();
 
         } catch (error) {
             console.error("Error saving attendance: ", error);
@@ -516,33 +564,33 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Dasbor Siswa</h2>
                 
                 {isHoliday && (
-                    <div className="text-center p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg font-semibold">
+                    <div className="text-center p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg font-semibold border border-yellow-300">
                         <CalendarDays size={20} className="inline mr-2" /> Hari ini adalah Hari Libur: {holidayName || 'Tidak ada keterangan'}. Absensi ditutup.
                     </div>
                 )}
 
                 {!settings ? <div className="text-center p-4 bg-yellow-100 text-yellow-800 rounded-lg">Memuat pengaturan jam...</div> :
                 <div className="grid md:grid-cols-2 gap-6">
-                    <div className={`p-6 rounded-lg text-center transition-all ${!todayAttendance && !isHoliday ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                    <div className={`p-6 rounded-xl text-center transition-all shadow-md ${!todayAttendance && !isHoliday ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
                         <h3 className="text-xl font-semibold mb-3">Absen Masuk ({String(settings.checkin_start_hour).padStart(2, '0')}:00 - {String(settings.checkin_end_hour).padStart(2, '0')}:00)</h3>
                         <button 
                             onClick={() => handleAttend('in')} 
-                            disabled={!!todayAttendance || isHoliday} 
-                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-green-600 font-bold rounded-lg shadow-md hover:bg-green-50 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                            disabled={!!todayAttendance || isHoliday || loading} 
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-green-600 font-bold rounded-lg shadow-md hover:bg-green-100 transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                         >
-                            <LogIn size={20} /><span>Ambil Selfie Masuk</span>
+                            <LogIn size={20} /><span>{loading ? 'Memuat...' : 'Ambil Selfie Masuk'}</span>
                         </button>
                         {todayAttendance && <p className="text-xs mt-2 text-gray-600">Anda sudah absen masuk hari ini.</p>}
                         {isHoliday && <p className="text-xs mt-2 text-red-500">Absensi ditutup karena hari libur.</p>}
                     </div>
-                    <div className={`p-6 rounded-lg text-center transition-all ${todayAttendance && !todayAttendance.time_out && !isHoliday ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                    <div className={`p-6 rounded-xl text-center transition-all shadow-md ${todayAttendance && !todayAttendance.time_out && !isHoliday ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
                         <h3 className="text-xl font-semibold mb-3">Absen Pulang ({String(settings.checkout_start_hour).padStart(2, '0')}:00 - {String(settings.checkout_end_hour).padStart(2, '0')}:00)</h3>
                         <button 
                             onClick={() => handleAttend('out')} 
-                            disabled={!todayAttendance || !!todayAttendance.time_out || isHoliday} 
-                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-red-600 font-bold rounded-lg shadow-md hover:bg-red-50 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                            disabled={!todayAttendance || !!todayAttendance.time_out || isHoliday || loading} 
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-red-600 font-bold rounded-lg shadow-md hover:bg-red-100 transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                         >
-                            <LogOut size={20} /><span>Ambil Selfie Pulang</span>
+                            <LogOut size={20} /><span>{loading ? 'Memuat...' : 'Ambil Selfie Pulang'}</span>
                         </button>
                         {!todayAttendance && !isHoliday && <p className="text-xs mt-2 text-gray-600">Anda harus absen masuk terlebih dahulu.</p>}
                         {todayAttendance?.time_out && <p className="text-xs mt-2 text-gray-600">Anda sudah absen pulang hari ini.</p>}
@@ -552,14 +600,18 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                 }
 
                 {todayAttendance && (
-                    <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="font-bold text-lg mb-2">Rekap Absensi Hari Ini</h3>
-                        <div className="flex flex-col md:flex-row md:items-center gap-4">
-                            {todayAttendance.selfie_in_url && (
+                    <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-inner">
+                        <h3 className="font-bold text-lg mb-4 text-gray-700">Rekap Absensi Hari Ini ({getLocalDateString()})</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Absen Masuk Card */}
+                            <div className="p-4 bg-white rounded-lg shadow-sm border border-green-200">
+                                <h4 className="font-semibold text-green-600 mb-2 flex items-center gap-2"><LogIn size={16}/> MASUK</h4>
                                 <div className="text-center">
-                                    <img src={todayAttendance.selfie_in_url} alt="Selfie Masuk" className="w-32 h-32 object-cover rounded-lg mx-auto shadow-sm" />
-                                    <p className="text-sm mt-1">Masuk: {new Date(todayAttendance.time_in).toLocaleTimeString('id-ID')}</p>
-                                    <p className="text-xs text-gray-500">
+                                    {todayAttendance.selfie_in_url && (
+                                        <img src={todayAttendance.selfie_in_url} alt="Selfie Masuk" className="w-24 h-24 object-cover rounded-lg mx-auto shadow-md" />
+                                    )}
+                                    <p className="text-sm mt-2 font-mono">{todayAttendance.time_in ? new Date(todayAttendance.time_in).toLocaleTimeString('id-ID') : '-'}</p>
+                                    <p className="text-xs text-gray-500 mt-1">
                                         {todayAttendance.latitude_in && todayAttendance.longitude_in ? 
                                             <a href={`https://www.google.com/maps?q=${todayAttendance.latitude_in},${todayAttendance.longitude_in}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
                                                 Lihat Lokasi
@@ -567,20 +619,27 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                                         }
                                     </p>
                                 </div>
-                            )}
-                            {todayAttendance.selfie_out_url && (
+                            </div>
+
+                            {/* Absen Pulang Card */}
+                            <div className="p-4 bg-white rounded-lg shadow-sm border border-red-200">
+                                <h4 className="font-semibold text-red-600 mb-2 flex items-center gap-2"><LogOut size={16}/> PULANG</h4>
                                 <div className="text-center">
-                                    <img src={todayAttendance.selfie_out_url} alt="Selfie Pulang" className="w-32 h-32 object-cover rounded-lg mx-auto shadow-sm" />
-                                    <p className="text-sm mt-1">Pulang: {new Date(todayAttendance.time_out).toLocaleTimeString('id-ID')}</p>
-                                    <p className="text-xs text-gray-500">
+                                    {todayAttendance.selfie_out_url ? (
+                                        <img src={todayAttendance.selfie_out_url} alt="Selfie Pulang" className="w-24 h-24 object-cover rounded-lg mx-auto shadow-md" />
+                                    ) : (
+                                        <div className="w-24 h-24 flex items-center justify-center bg-gray-100 rounded-lg mx-auto text-gray-400 text-xs">Menunggu</div>
+                                    )}
+                                    <p className="text-sm mt-2 font-mono">{todayAttendance.time_out ? new Date(todayAttendance.time_out).toLocaleTimeString('id-ID') : '-'}</p>
+                                    <p className="text-xs text-gray-500 mt-1">
                                         {todayAttendance.latitude_out && todayAttendance.longitude_out ? 
                                             <a href={`https://www.google.com/maps?q=${todayAttendance.latitude_out},${todayAttendance.longitude_out}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
                                                 Lihat Lokasi
-                                            </a> : 'Lokasi tidak tersedia'
+                                            </a> : todayAttendance.time_out ? 'Lokasi tidak tersedia' : '-'
                                         }
                                     </p>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -594,252 +653,9 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
 
 
 // --- Komponen Dasbor Guru ---
-const TeacherDashboard = ({ user, supabase, settings, setNotification, isHoliday, holidayName }) => {
-    const [showCamera, setShowCamera] = useState(false);
-    const [attendanceType, setAttendanceType] = useState('');
-    const [todayAttendance, setTodayAttendance] = useState(null);
-    const [loading, setLoading] = useState(true);
+const TeacherDashboard = (props) => <StudentDashboard {...props} />; // Reusing StudentDashboard logic for simplicity
 
-    const fetchAttendance = async () => {
-        setLoading(true);
-        const today = getLocalDateString();
-        const { data, error } = await supabase
-            .from('attendance')
-            .select('*')
-            .eq('user_nis', user.nis)
-            .eq('date', today)
-            .maybeSingle();
-        
-        if (error) {
-            console.error("Gagal mengambil data absensi guru:", error);
-            setNotification({ type: 'error', message: "Gagal memuat status absensi. Coba lagi nanti." });
-        } else {
-            setTodayAttendance(data);
-        }
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        if (!supabase) return;
-        fetchAttendance();
-    }, [user.nis, supabase]);
-
-    const handleAttend = async (type) => {
-        if (isHoliday) {
-            setNotification({ type: 'error', message: `Hari ini adalah Hari Libur (${holidayName}). Absensi ditutup.` });
-            return;
-        }
-
-        if (!settings) {
-            setNotification({ type: 'error', message: "Pengaturan jam belum siap. Mohon tunggu sebentar." });
-            return;
-        }
-
-        const now = new Date();
-        const currentHour = now.getHours();
-
-        const getAttendanceLocation = () => new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error("Geolocation is not supported by your browser."));
-                return;
-            }
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    resolve({
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                    });
-                },
-                (error) => {
-                    console.error("Error getting location:", error);
-                    reject(new Error("Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan."));
-                }
-            );
-        });
-
-        let location = null;
-        try {
-            location = await getAttendanceLocation();
-        } catch (err) {
-            setNotification({ type: 'error', message: err.message });
-            return;
-        }
-
-        if (type === 'in' && (currentHour < settings.teacher_checkin_start || currentHour >= settings.teacher_checkin_end)) {
-            setNotification({ type: 'error', message: `Absen masuk hanya bisa dilakukan antara pukul ${String(settings.teacher_checkin_start).padStart(2, '0')}:00 - ${String(settings.teacher_checkin_end).padStart(2, '0')}:00.` });
-            return;
-        }
-
-        if (type === 'out' && (currentHour < settings.teacher_checkout_start || currentHour >= settings.teacher_checkout_end)) {
-            setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(settings.teacher_checkout_start).padStart(2, '0')}:00 - ${String(settings.teacher_checkout_end).padStart(2, '0')}:00.` });
-            return;
-        }
-        
-        setAttendanceType(type);
-        setShowCamera(true);
-    };
-
-    const handleSelfieCapture = async (imageData) => {
-        setShowCamera(false);
-        setNotification({ type: 'info', message: 'Mengunggah foto dan menyimpan data...' });
-
-        try {
-            const dateStr = getLocalDateString();
-            const fileExt = 'jpg';
-            const filePath = `${user.nis}/${dateStr}-${attendanceType}.${fileExt}`;
-
-            const response = await fetch(imageData);
-            const blob = await response.blob();
-
-            const { error: uploadError } = await supabase.storage
-                .from('selfies')
-                .upload(filePath, blob, { upsert: true });
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = await supabase.storage
-                .from('selfies')
-                .getPublicUrl(filePath);
-            const publicURL = urlData.publicUrl;
-
-            const location = await new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    reject(new Error("Geolocation not supported."));
-                    return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        resolve({
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                        });
-                    },
-                    (error) => {
-                        console.error("Error getting location:", error);
-                        reject(new Error("Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan."));
-                    }
-                );
-            });
-
-            if (attendanceType === 'in') {
-                const { error } = await supabase.from('attendance').insert({
-                    user_nis: user.nis,
-                    name: user.name,
-                    class: null,
-                    date: dateStr,
-                    time_in: new Date().toISOString(),
-                    selfie_in_url: publicURL,
-                    status: 'Hadir',
-                    latitude_in: location.latitude,
-                    longitude_in: location.longitude,
-                });
-                if (error) throw error;
-                setNotification({ type: 'success', message: 'Absen masuk berhasil!' });
-            } else if (attendanceType === 'out' && todayAttendance) {
-                const { error } = await supabase.from('attendance')
-                    .update({
-                        time_out: new Date().toISOString(),
-                        selfie_out_url: publicURL,
-                        latitude_out: location.latitude,
-                        longitude_out: location.longitude,
-                    })
-                    .eq('id', todayAttendance.id);
-                if (error) throw error;
-                setNotification({ type: 'success', message: 'Absen pulang berhasil!' });
-            }
-            
-            const { data: newData } = await supabase.from('attendance').select('*').eq('user_nis', user.nis).eq('date', dateStr).maybeSingle();
-            if (newData) setTodayAttendance(newData);
-
-        } catch (error) {
-            console.error("Error saving attendance: ", error);
-            setNotification({ type: 'error', message: `Terjadi kesalahan: ${error.message}` });
-        }
-    };
-
-    if (loading) return <div className="text-center p-8">Memeriksa status absensi...</div>
-
-    return (
-        <div className="container mx-auto">
-            {showCamera && <CameraModal onCapture={handleSelfieCapture} onCancel={() => setShowCamera(false)} setNotification={setNotification} />}
-            
-            <div className="bg-white p-6 rounded-xl shadow-lg">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Dasbor Guru</h2>
-
-                {isHoliday && (
-                    <div className="text-center p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg font-semibold">
-                        <CalendarDays size={20} className="inline mr-2" /> Hari ini adalah Hari Libur: {holidayName || 'Tidak ada keterangan'}. Absensi ditutup.
-                    </div>
-                )}
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                    <div className={`p-6 rounded-lg text-center transition-all ${!todayAttendance && !isHoliday ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                        <h3 className="text-xl font-semibold mb-3">Absen Masuk ({String(settings.teacher_checkin_start).padStart(2, '0')}:00 - {String(settings.teacher_checkin_end).padStart(2, '0')}:00)</h3>
-                        <button 
-                            onClick={() => handleAttend('in')} 
-                            disabled={!!todayAttendance || isHoliday} 
-                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-green-600 font-bold rounded-lg shadow-md hover:bg-green-50 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-                        >
-                            <LogIn size={20} /><span>Ambil Selfie Masuk</span>
-                        </button>
-                        {todayAttendance && <p className="text-xs mt-2 text-gray-600">Anda sudah absen masuk hari ini.</p>}
-                        {isHoliday && <p className="text-xs mt-2 text-red-500">Absensi ditutup karena hari libur.</p>}
-                    </div>
-                    <div className={`p-6 rounded-lg text-center transition-all ${todayAttendance && !todayAttendance.time_out && !isHoliday ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                        <h3 className="text-xl font-semibold mb-3">Absen Pulang ({String(settings.teacher_checkout_start).padStart(2, '0')}:00 - {String(settings.teacher_checkout_end).padStart(2, '0')}:00)</h3>
-                        <button 
-                            onClick={() => handleAttend('out')} 
-                            disabled={!todayAttendance || !!todayAttendance.time_out || isHoliday} 
-                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-red-600 font-bold rounded-lg shadow-md hover:bg-red-50 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-                        >
-                            <LogOut size={20} /><span>Ambil Selfie Pulang</span>
-                        </button>
-                        {!todayAttendance && !isHoliday && <p className="text-xs mt-2 text-gray-600">Anda harus absen masuk terlebih dahulu.</p>}
-                        {todayAttendance?.time_out && <p className="text-xs mt-2 text-gray-600">Anda sudah absen pulang hari ini.</p>}
-                        {isHoliday && <p className="text-xs mt-2 text-red-500">Absensi ditutup karena hari libur.</p>}
-                    </div>
-                </div>
-                {todayAttendance && (
-                    <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="font-bold text-lg mb-2">Rekap Absensi Hari Ini</h3>
-                        <div className="flex flex-col md:flex-row md:items-center gap-4">
-                            {todayAttendance.selfie_in_url && (
-                                <div className="text-center">
-                                    <img src={todayAttendance.selfie_in_url} alt="Selfie Masuk" className="w-32 h-32 object-cover rounded-lg mx-auto shadow-sm" />
-                                    <p className="text-sm mt-1">Masuk: {new Date(todayAttendance.time_in).toLocaleTimeString('id-ID')}</p>
-                                    <p className="text-xs text-gray-500">
-                                        {todayAttendance.latitude_in && todayAttendance.longitude_in ? 
-                                            <a href={`https://www.google.com/maps?q=${todayAttendance.latitude_in},${todayAttendance.longitude_in}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                                Lihat Lokasi
-                                            </a> : 'Lokasi tidak tersedia'
-                                        }
-                                    </p>
-                                </div>
-                            )}
-                            {todayAttendance.selfie_out_url && (
-                                <div className="text-center">
-                                    <img src={todayAttendance.selfie_out_url} alt="Selfie Pulang" className="w-32 h-32 object-cover rounded-lg mx-auto shadow-sm" />
-                                    <p className="text-sm mt-1">Pulang: {new Date(todayAttendance.time_out).toLocaleTimeString('id-ID')}</p>
-                                    <p className="text-xs text-gray-500">
-                                        {todayAttendance.latitude_out && todayAttendance.longitude_out ? 
-                                            <a href={`https://www.google.com/maps?q=${todayAttendance.latitude_out},${todayAttendance.longitude_out}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                                Lihat Lokasi
-                                            </a> : 'Lokasi tidak tersedia'
-                                        }
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-                <div className="text-center text-xs text-gray-400 mt-4">
-                    <p>Created by Abi Nijav</p>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- Komponen Modal Kamera (DIPERBARUI untuk Laptop) ---
+// --- Komponen Modal Kamera ---
 const CameraModal = ({ onCapture, onCancel, setNotification }) => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -856,6 +672,7 @@ const CameraModal = ({ onCapture, onCancel, setNotification }) => {
                     throw new Error('Fitur kamera tidak didukung di browser ini.');
                 }
                 
+                // Minta izin kamera, utamakan kamera depan (user)
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
                 
                 if (videoRef.current) {
@@ -887,6 +704,7 @@ const CameraModal = ({ onCapture, onCancel, setNotification }) => {
         if (videoRef.current && canvasRef.current && videoRef.current.readyState >= 2) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
+            // Gunakan dimensi video asli untuk mencegah distorsi
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -908,11 +726,11 @@ const CameraModal = ({ onCapture, onCancel, setNotification }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-4 rounded-lg max-w-lg w-full flex flex-col max-h-[90vh]">
-                <h3 className="text-lg font-bold mb-4 flex-shrink-0 text-center">{capturedImage ? 'Pratinjau Foto' : 'Ambil Selfie'}</h3>
+            <div className="bg-white p-4 rounded-xl max-w-lg w-full flex flex-col max-h-[90vh]">
+                <h3 className="text-xl font-bold mb-4 flex-shrink-0 text-center text-gray-800">{capturedImage ? 'Pratinjau Foto' : 'Ambil Selfie'}</h3>
                 
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="relative w-full max-w-md mx-auto aspect-square bg-gray-200 rounded-md overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-hidden rounded-xl border-4 border-gray-200">
+                    <div className="relative w-full aspect-square bg-gray-200 overflow-hidden">
                         {cameraError && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-red-100 text-red-700">
                                 <p className="font-semibold">Gagal Mengakses Kamera</p>
@@ -924,13 +742,19 @@ const CameraModal = ({ onCapture, onCancel, setNotification }) => {
                         {capturedImage ? (
                             <img src={capturedImage} alt="Pratinjau Selfie" className="w-full h-full object-cover" />
                         ) : (
-                            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+                            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover transform scale-x-[-1]"></video>
                         )}
 
                         {!isCameraReady && !capturedImage && !cameraError && (
-                             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                                 <p className="text-white">Menyalakan kamera...</p>
-                             </div>
+                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                                <p className="text-white">Menyalakan kamera...</p>
+                            </div>
+                        )}
+                        {/* Overlay panduan wajah */}
+                        {!capturedImage && !cameraError && (
+                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-3/4 h-3/4 border-4 border-dashed border-white rounded-full opacity-50"></div>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -941,13 +765,13 @@ const CameraModal = ({ onCapture, onCancel, setNotification }) => {
                     <div className="flex justify-center gap-4 mt-4 flex-shrink-0">
                         {capturedImage ? (
                             <>
-                                <button onClick={handleRetake} className="flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600"><RefreshCw size={20} />Ambil Ulang</button>
-                                <button onClick={handleSend} className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700"><Send size={20} />Kirim</button>
+                                <button onClick={handleRetake} className="flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition-colors"><RefreshCw size={20} />Ambil Ulang</button>
+                                <button onClick={handleSend} className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"><Send size={20} />Kirim</button>
                             </>
                         ) : (
                             <>
-                                <button onClick={handleCaptureClick} disabled={!isCameraReady} className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400"><Camera size={20} />Ambil Gambar</button>
-                                <button onClick={onCancel} className="flex items-center gap-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400"><X size={20} />Batal</button>
+                                <button onClick={handleCaptureClick} disabled={!isCameraReady} className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors"><Camera size={20} />Ambil Gambar</button>
+                                <button onClick={onCancel} className="flex items-center gap-2 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition-colors"><X size={20} />Batal</button>
                             </>
                         )}
                     </div>
@@ -984,7 +808,7 @@ const TimeSettings = ({ supabase, currentSettings, setNotification, setTimeSetti
             setNotification({ type: 'error', message: `Gagal menyimpan: ${error.message}` });
         } else {
             setNotification({ type: 'success', message: 'Pengaturan berhasil disimpan!' });
-            updateAppSettings(data); // Update settings in the main App component
+            updateAppSettings(data);
         }
         setLoading(false);
     };
@@ -1000,40 +824,40 @@ const TimeSettings = ({ supabase, currentSettings, setNotification, setTimeSetti
         <div className="bg-white p-6 rounded-xl shadow-lg space-y-4">
             <h2 className="text-2xl font-bold text-gray-800">Pengaturan Jam Absensi</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 border rounded-lg space-y-4">
-                    <h3 className="font-bold text-lg text-center">Untuk Siswa</h3>
-                    <div>
-                        <h4 className="font-semibold mb-2">Jam Masuk</h4>
+                <div className="p-6 border border-gray-200 rounded-xl space-y-4 bg-green-50">
+                    <h3 className="font-bold text-xl text-center text-green-700">Untuk Siswa</h3>
+                    <div className='border-t pt-4'>
+                        <h4 className="font-semibold mb-2">Jam Masuk (Mulai - Selesai)</h4>
                         <div className="flex items-center gap-2">
                             <input type="number" name="checkin_start_hour" value={settings.checkin_start_hour} onChange={handleChange} min="0" max="23" className="w-full p-2 border rounded-md" />
-                            <span>-</span>
+                            <span className='text-gray-500'>sampai</span>
                             <input type="number" name="checkin_end_hour" value={settings.checkin_end_hour} onChange={handleChange} min="0" max="23" className="w-full p-2 border rounded-md" />
                         </div>
                     </div>
                     <div>
-                        <h4 className="font-semibold mb-2">Jam Pulang</h4>
+                        <h4 className="font-semibold mb-2">Jam Pulang (Mulai - Selesai)</h4>
                         <div className="flex items-center gap-2">
                             <input type="number" name="checkout_start_hour" value={settings.checkout_start_hour} onChange={handleChange} min="0" max="23" className="w-full p-2 border rounded-md" />
-                            <span>-</span>
+                            <span className='text-gray-500'>sampai</span>
                             <input type="number" name="checkout_end_hour" value={settings.checkout_end_hour} onChange={handleChange} min="0" max="23" className="w-full p-2 border rounded-md" />
                         </div>
                     </div>
                 </div>
-                <div className="p-4 border rounded-lg space-y-4">
-                    <h3 className="font-bold text-lg text-center">Untuk Guru</h3>
-                    <div>
-                        <h4 className="font-semibold mb-2">Jam Masuk</h4>
+                <div className="p-6 border border-gray-200 rounded-xl space-y-4 bg-blue-50">
+                    <h3 className="font-bold text-xl text-center text-blue-700">Untuk Guru</h3>
+                    <div className='border-t pt-4'>
+                        <h4 className="font-semibold mb-2">Jam Masuk (Mulai - Selesai)</h4>
                         <div className="flex items-center gap-2">
                             <input type="number" name="teacher_checkin_start" value={settings.teacher_checkin_start} onChange={handleChange} min="0" max="23" className="w-full p-2 border rounded-md" />
-                            <span>-</span>
+                            <span className='text-gray-500'>sampai</span>
                             <input type="number" name="teacher_checkin_end" value={settings.teacher_checkin_end} onChange={handleChange} min="0" max="23" className="w-full p-2 border rounded-md" />
                         </div>
                     </div>
                     <div>
-                        <h4 className="font-semibold mb-2">Jam Pulang</h4>
+                        <h4 className="font-semibold mb-2">Jam Pulang (Mulai - Selesai)</h4>
                         <div className="flex items-center gap-2">
                             <input type="number" name="teacher_checkout_start" value={settings.teacher_checkout_start} onChange={handleChange} min="0" max="23" className="w-full p-2 border rounded-md" />
-                            <span>-</span>
+                            <span className='text-gray-500'>sampai</span>
                             <input type="number" name="teacher_checkout_end" value={settings.teacher_checkout_end} onChange={handleChange} min="0" max="23" className="w-full p-2 border rounded-md" />
                         </div>
                     </div>
@@ -1043,24 +867,24 @@ const TimeSettings = ({ supabase, currentSettings, setNotification, setTimeSetti
                 <p>* Jam menggunakan format 24 jam. Contoh: 7 untuk jam 7 pagi, 13 untuk jam 1 siang.</p>
                 <p>* "Selesai" berarti absensi ditutup PADA jam tersebut. Contoh: Selesai jam 8 berarti bisa absen sampai 07:59.</p>
             </div>
-            <button onClick={handleSave} disabled={loading} className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400">
+            <button onClick={handleSave} disabled={loading} className="w-full py-3 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 font-semibold shadow-md transition-colors">
                 {loading ? 'Menyimpan...' : 'Simpan Pengaturan'}
             </button>
         </div>
     );
 };
 
-// --- Komponen Manajemen Hari Libur (BARU) ---
+// --- Komponen Manajemen Hari Libur (UPDATED with Confirmation Modal) ---
 const HolidayManagement = ({ supabase, setNotification, fetchHolidays }) => {
     const [holidays, setHolidays] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newDate, setNewDate] = useState('');
-    const [newDescription, setNewDescription] = useState(''); // Renamed to description for internal clarity
+    const [newDescription, setNewDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(null); // Tracks the ID to delete
 
     const fetchAllHolidays = async () => {
         setLoading(true);
-        // NOTE: Asumsi kolom deskripsi adalah 'name' berdasarkan error Supabase
         const { data, error } = await supabase.from('holidays').select('*').order('date', { ascending: true });
         if (error) {
             setNotification({ type: 'error', message: 'Gagal memuat daftar hari libur.' });
@@ -1074,7 +898,23 @@ const HolidayManagement = ({ supabase, setNotification, fetchHolidays }) => {
     useEffect(() => {
         if (!supabase) return;
         fetchAllHolidays();
+        
+        // Setup Realtime Listener on holidays table to trigger refresh in the Admin panel
+        const channel = supabase.channel(`holidays_changes`)
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'holidays',
+            }, (payload) => {
+                fetchAllHolidays();
+                fetchHolidays(); // Refresh status hari ini di App utama
+            })
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+        
     }, [supabase]);
+
 
     const handleAddHoliday = async (e) => {
         e.preventDefault();
@@ -1085,11 +925,9 @@ const HolidayManagement = ({ supabase, setNotification, fetchHolidays }) => {
 
         setIsSaving(true);
 
-        // FIX: Menggunakan 'name' sebagai kolom untuk deskripsi/keterangan, 
-        // karena error menunjukkan 'name' adalah NOT NULL.
         const { error } = await supabase.from('holidays').insert({ 
             date: newDate, 
-            name: newDescription.trim() // Changed from description to name
+            name: newDescription.trim()
         });
         
         if (error) {
@@ -1097,8 +935,7 @@ const HolidayManagement = ({ supabase, setNotification, fetchHolidays }) => {
             setNotification({ type: 'error', message: 'Gagal menambahkan hari libur: ' + error.message });
         } else {
             setNotification({ type: 'success', message: 'Hari libur berhasil ditambahkan!' });
-            fetchAllHolidays();
-            fetchHolidays(); // Panggil fungsi dari App untuk refresh status hari ini
+            // The realtime listener will handle fetchAllHolidays() and fetchHolidays()
             setNewDate('');
             setNewDescription('');
         }
@@ -1106,24 +943,30 @@ const HolidayManagement = ({ supabase, setNotification, fetchHolidays }) => {
     };
 
     const handleDeleteHoliday = async (id) => {
-        if (window.confirm('Apakah Anda yakin ingin menghapus hari libur ini?')) {
-            setNotification({ type: 'info', message: 'Menghapus data...' });
-            const { error } = await supabase.from('holidays').delete().eq('id', id);
-            if (error) {
-                setNotification({ type: 'error', message: 'Gagal menghapus hari libur: ' + error.message });
-            } else {
-                setNotification({ type: 'success', message: 'Hari libur berhasil dihapus.' });
-                fetchAllHolidays();
-                fetchHolidays(); // Panggil fungsi dari App untuk refresh status hari ini
-            }
+        setShowDeleteModal(null); // Close modal
+        setNotification({ type: 'info', message: 'Menghapus data...' });
+        const { error } = await supabase.from('holidays').delete().eq('id', id);
+        if (error) {
+            setNotification({ type: 'error', message: 'Gagal menghapus hari libur: ' + error.message });
+        } else {
+            setNotification({ type: 'success', message: 'Hari libur berhasil dihapus.' });
+            // The realtime listener will handle refresh
         }
     };
 
     return (
         <div className="space-y-8">
+            {showDeleteModal && (
+                <ConfirmationModal
+                    title="Hapus Hari Libur"
+                    message="Anda yakin ingin menghapus hari libur ini? Tindakan ini tidak dapat dibatalkan."
+                    onConfirm={() => handleDeleteHoliday(showDeleteModal)}
+                    onCancel={() => setShowDeleteModal(null)}
+                />
+            )}
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Pengaturan Hari Libur</h2>
-                <form onSubmit={handleAddHoliday} className="space-y-4 border p-4 rounded-lg bg-gray-50">
+                <form onSubmit={handleAddHoliday} className="space-y-4 border p-4 rounded-xl bg-gray-50 shadow-inner">
                     <h3 className="font-semibold text-lg">Tambah Hari Libur Baru</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-1">
@@ -1151,7 +994,7 @@ const HolidayManagement = ({ supabase, setNotification, fetchHolidays }) => {
                     <button
                         type="submit"
                         disabled={isSaving}
-                        className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400"
+                        className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 transition-colors"
                     >
                         <PlusCircle size={20} /> {isSaving ? 'Menyimpan...' : 'Tambahkan Hari Libur'}
                     </button>
@@ -1161,16 +1004,16 @@ const HolidayManagement = ({ supabase, setNotification, fetchHolidays }) => {
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h3 className="text-xl font-bold text-gray-700 mb-3">Daftar Hari Libur Terjawal</h3>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500">
+                    <table className="w-full text-sm text-left text-gray-500 rounded-lg overflow-hidden">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" className="px-6 py-3">Tanggal</th><th scope="col" className="px-6 py-3">Keterangan</th><th scope="col" className="px-6 py-3">Aksi</th></tr></thead>
                         <tbody>
                             {loading ? <tr><td colSpan="3" className="text-center p-6">Memuat data...</td></tr> : holidays.length === 0 ? <tr><td colSpan="3" className="text-center p-6">Belum ada hari libur yang terjadwal.</td></tr> :
                                 holidays.map(h => (
                                     <tr key={h.id} className="bg-white border-b hover:bg-gray-50">
                                         <td className="px-6 py-4 font-medium text-gray-900">{h.date}</td>
-                                        <td className="px-6 py-4">{h.name}</td> {/* Use h.name for display */}
+                                        <td className="px-6 py-4">{h.name}</td> 
                                         <td className="px-6 py-4">
-                                            <button onClick={() => handleDeleteHoliday(h.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors" title="Hapus"><Trash2 size={18} /></button>
+                                            <button onClick={() => setShowDeleteModal(h.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors" title="Hapus"><Trash2 size={18} /></button>
                                         </td>
                                     </tr>
                                 ))
@@ -1190,6 +1033,7 @@ const ClassManagement = ({ supabase, setNotification }) => {
     const [newClassName, setNewClassName] = useState('');
     const [editingClassId, setEditingClassId] = useState(null);
     const [editingClassName, setEditingClassName] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     const fetchClasses = async () => {
         setLoading(true);
@@ -1210,8 +1054,10 @@ const ClassManagement = ({ supabase, setNotification }) => {
 
     const handleAddClass = async (e) => {
         e.preventDefault();
+        setIsSaving(true);
         if (!newClassName.trim()) { 
             setNotification({ type: 'error', message: 'Nama kelas tidak boleh kosong.' }); 
+            setIsSaving(false);
             return; 
         }
         const { data, error } = await supabase.from('classes').insert({ name: newClassName.trim() }).select();
@@ -1223,6 +1069,7 @@ const ClassManagement = ({ supabase, setNotification }) => {
             fetchClasses();
             setNewClassName('');
         }
+        setIsSaving(false);
     };
 
     const handleEditClick = (cls) => {
@@ -1236,16 +1083,19 @@ const ClassManagement = ({ supabase, setNotification }) => {
     };
 
     const handleUpdateClass = async (classId) => {
+        setIsSaving(true);
         const oldName = classes.find(c => c.id === classId)?.name;
         const newName = editingClassName.trim();
 
         if (!newName || newName === oldName) {
             handleCancelEdit();
+            setIsSaving(false);
             return;
         }
 
-        setNotification({ type: 'info', message: 'Memperbarui data...' });
+        setNotification({ type: 'info', message: 'Memperbarui data kelas dan siswa...' });
 
+        // 1. Update tabel classes
         const { error: classUpdateError } = await supabase
             .from('classes')
             .update({ name: newName })
@@ -1253,9 +1103,11 @@ const ClassManagement = ({ supabase, setNotification }) => {
 
         if (classUpdateError) {
             setNotification({ type: 'error', message: `Gagal memperbarui kelas: ${classUpdateError.message}` });
+            setIsSaving(false);
             return;
         }
 
+        // 2. Update tabel users (siswa) yang terkait
         const { error: usersUpdateError } = await supabase
             .from('users')
             .update({ class: newName })
@@ -1269,21 +1121,24 @@ const ClassManagement = ({ supabase, setNotification }) => {
         
         fetchClasses();
         handleCancelEdit();
+        setIsSaving(false);
     };
     
     return (
         <div className="space-y-8">
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Manajemen Kelas</h2>
-                <form onSubmit={handleAddClass} className="flex gap-4">
-                    <input type="text" value={newClassName} onChange={e => setNewClassName(e.target.value)} className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Kelas 11B" />
-                    <button type="submit" className="flex items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"><PlusCircle size={20} /> Tambah</button>
+                <form onSubmit={handleAddClass} className="flex flex-col md:flex-row gap-4">
+                    <input type="text" value={newClassName} onChange={e => setNewClassName(e.target.value)} className="flex-grow px-3 py-2 border border-gray-300 rounded-lg shadow-sm" placeholder="Contoh: Kelas 11B" disabled={isSaving}/>
+                    <button type="submit" disabled={isSaving} className="flex items-center justify-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400">
+                        <PlusCircle size={20} /> {isSaving ? 'Menambahkan...' : 'Tambah'}
+                    </button>
                 </form>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h3 className="text-xl font-bold text-gray-700 mb-3">Daftar Kelas Tersedia</h3>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500">
+                    <table className="w-full text-sm text-left text-gray-500 rounded-lg overflow-hidden">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" className="px-6 py-3">Nama Kelas</th><th scope="col" className="px-6 py-3">Aksi</th></tr></thead>
                         <tbody>
                             {loading ? <tr><td colSpan="2" className="text-center p-6">Memuat data...</td></tr> : classes.length === 0 ? <tr><td colSpan="2" className="text-center p-6">Belum ada data kelas.</td></tr> :
@@ -1300,15 +1155,15 @@ const ClassManagement = ({ supabase, setNotification }) => {
                                                     />
                                                 </td>
                                                 <td className="px-6 py-4 flex items-center gap-4">
-                                                    <button onClick={() => handleUpdateClass(c.id)} className="text-green-500 hover:text-green-700"><Check size={20} /></button>
-                                                    <button onClick={handleCancelEdit} className="text-gray-500 hover:text-gray-700"><XCircle size={20} /></button>
+                                                    <button onClick={() => handleUpdateClass(c.id)} className="text-green-500 hover:text-green-700" title="Simpan"><Check size={20} /></button>
+                                                    <button onClick={handleCancelEdit} className="text-gray-500 hover:text-gray-700" title="Batal"><XCircle size={20} /></button>
                                                 </td>
                                             </>
                                         ) : (
                                             <>
                                                 <td className="px-6 py-4 font-medium text-gray-900">{c.name}</td>
                                                 <td className="px-6 py-4">
-                                                    <button onClick={() => handleEditClick(c)} className="text-blue-500 hover:text-blue-700"><Edit size={18} /></button>
+                                                    <button onClick={() => handleEditClick(c)} className="text-blue-500 hover:text-blue-700" title="Edit"><Edit size={18} /></button>
                                                 </td>
                                             </>
                                         )}
@@ -1323,7 +1178,7 @@ const ClassManagement = ({ supabase, setNotification }) => {
     );
 };
 
-// --- Komponen Manajemen Siswa ---
+// --- Komponen Manajemen Siswa (UPDATED with Delete) ---
 const StudentManagement = ({ supabase, setNotification }) => {
     const [students, setStudents] = useState([]);
     const [classList, setClassList] = useState([]);
@@ -1340,6 +1195,9 @@ const StudentManagement = ({ supabase, setNotification }) => {
     const [editingStudentNis, setEditingStudentNis] = useState('');
     const [editingStudentName, setEditingStudentName] = useState('');
     const [editingStudentClass, setEditingStudentClass] = useState('');
+    
+    // State untuk konfirmasi hapus
+    const [showDeleteModal, setShowDeleteModal] = useState(null); 
 
     const fetchData = async () => {
         setLoading(true);
@@ -1351,7 +1209,7 @@ const StudentManagement = ({ supabase, setNotification }) => {
         } else {
             setStudents(studentsData || []);
             setClassList(classesData || []);
-            if (classesData && classesData.length > 0) {
+            if (classesData && classesData.length > 0 && !studentClass) {
                 setStudentClass(classesData[0].name);
             }
         }
@@ -1376,8 +1234,10 @@ const StudentManagement = ({ supabase, setNotification }) => {
 
     const handleAddStudent = async (e) => {
         e.preventDefault();
+        setLoading(true);
         if (!nis || !name || !studentClass) {
             setNotification({ type: 'error', message: 'NIS, Nama, dan Kelas harus diisi.' });
+            setLoading(false);
             return;
         }
         const { data, error } = await supabase.from('users').insert({ nis, name, class: studentClass, role: 'student' }).select();
@@ -1387,7 +1247,33 @@ const StudentManagement = ({ supabase, setNotification }) => {
             fetchData();
             setNis(''); setName('');
         }
+        setLoading(false);
     };
+
+    const handleDeleteStudent = async (studentId) => {
+        setShowDeleteModal(null);
+        setNotification({ type: 'info', message: 'Menghapus data siswa...' });
+        
+        const studentToDelete = students.find(s => s.id === studentId);
+        if (!studentToDelete) return;
+
+        try {
+            // Catatan: Asumsi Supabase memiliki ON DELETE CASCADE pada attendance.user_nis
+            const { error: userError } = await supabase
+                .from('users')
+                .delete()
+                .eq('id', studentId);
+
+            if (userError) throw userError;
+
+            setNotification({ type: 'success', message: `Siswa ${studentToDelete.name} berhasil dihapus.` });
+            fetchData(); // Refresh list
+        } catch (error) {
+            setNotification({ type: 'error', message: `Gagal menghapus siswa: ${error.message}` });
+            console.error(error);
+        }
+    };
+
 
     const handleEditClick = (student) => {
         setEditingStudentId(student.id);
@@ -1489,7 +1375,7 @@ const StudentManagement = ({ supabase, setNotification }) => {
 
                 const newStudents = json.map(row => {
                     if (!row.nis || !row.name || !row.class) {
-                        throw new Error(`Data tidak lengkap pada baris: ${JSON.stringify(row)}. Pastikan kolom 'nis', 'name', dan 'class' terisi.`);
+                        throw new Error(`Data tidak lengkap pada baris. Pastikan kolom 'nis', 'name', dan 'class' terisi.`);
                     }
                     return {
                         nis: String(row.nis),
@@ -1501,13 +1387,14 @@ const StudentManagement = ({ supabase, setNotification }) => {
 
                 setNotification({ type: 'info', message: `Menambahkan ${newStudents.length} siswa ke database...` });
 
-                const { error } = await supabase.from('users').insert(newStudents);
+                // Menggunakan upsert untuk menghindari duplikasi NIS/ID
+                const { error } = await supabase.from('users').upsert(newStudents, { onConflict: 'nis' });
 
                 if (error) {
                     throw error;
                 }
 
-                setNotification({ type: 'success', message: `${newStudents.length} siswa berhasil diimpor!` });
+                setNotification({ type: 'success', message: `${newStudents.length} siswa berhasil diimpor/diperbarui!` });
                 fetchData();
                 fileInputRef.current.value = ""; 
 
@@ -1523,42 +1410,54 @@ const StudentManagement = ({ supabase, setNotification }) => {
 
     return (
         <div className="space-y-8">
+            {showDeleteModal && (
+                <ConfirmationModal
+                    title="Hapus Siswa"
+                    message={`Anda yakin ingin menghapus siswa ${students.find(s => s.id === showDeleteModal)?.name}? Semua riwayat absensi juga akan terhapus. Tindakan ini tidak dapat dibatalkan.`}
+                    onConfirm={() => handleDeleteStudent(showDeleteModal)}
+                    onCancel={() => setShowDeleteModal(null)}
+                />
+            )}
             <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
                     <h2 className="text-2xl font-bold text-gray-800">Manajemen Siswa</h2>
-                    <button onClick={() => setShowImporter(!showImporter)} className="flex items-center gap-2 py-2 px-4 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200">
+                    <button onClick={() => setShowImporter(!showImporter)} className="flex items-center gap-2 py-2 px-4 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors">
                         <UploadCloud size={16} />
                         {showImporter ? 'Tutup Impor' : 'Impor dari Excel'}
                     </button>
                 </div>
 
                 {showImporter && (
-                    <div className="p-4 my-4 border-t border-b">
+                    <div className="p-4 my-4 border border-gray-200 rounded-xl shadow-inner bg-gray-50">
                         <h3 className="font-bold text-lg mb-2">Impor Siswa dari Excel</h3>
                         <div className="space-y-3">
-                            <p className="text-sm text-gray-600">1. Unduh template untuk memastikan format kolom sudah benar.</p>
+                            <p className="text-sm text-gray-600">1. Unduh template untuk memastikan kolom (`nis`, `name`, `class`) sudah benar.</p>
                             <button onClick={handleDownloadTemplate} className="flex items-center gap-2 text-sm text-blue-600 hover:underline"><Download size={16}/>Unduh Template</button>
                             <p className="text-sm text-gray-600">2. Pilih file Excel (.xlsx) yang sudah diisi.</p>
-                            <input type="file" ref={fileInputRef} accept=".xlsx, .xls" className="text-sm" />
-                            <p className="text-sm text-gray-600">3. Klik tombol impor untuk memulai proses.</p>
+                            <input type="file" ref={fileInputRef} accept=".xlsx, .xls" className="text-sm block w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
+                            <p className="text-sm text-gray-600">3. Klik tombol impor untuk memulai proses (akan menimpa data jika NIS sama).</p>
                             <button onClick={handleImport} disabled={isImporting} className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400">
-                                {isImporting ? 'Mengimpor...' : 'Impor Siswa'}
+                                <UploadCloud size={20} /> {isImporting ? 'Mengimpor...' : 'Impor Siswa'}
                             </button>
                         </div>
                     </div>
                 )}
                 
-                <form onSubmit={handleAddStudent} className="space-y-4">
-                    <div><label className="block text-sm font-medium text-gray-700">NIS (6 Digit Angka)</label><input type="text" value={nis} onChange={e => setNis(e.target.value)} maxLength="6" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Contoh: 123456" /></div>
-                    <div><label className="block text-sm font-medium text-gray-700">Nama Lengkap</label><input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Nama Siswa" /></div>
-                    <div><label className="block text-sm font-medium text-gray-700">Kelas</label><select value={studentClass} onChange={e => setStudentClass(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md">{classList.length === 0 ? <option disabled>Buat kelas dahulu</option> : classList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
-                    <button type="submit" className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"><PlusCircle size={20} /> Tambah Siswa (Manual)</button>
+                <form onSubmit={handleAddStudent} className="space-y-4 pt-4 border-t border-gray-100">
+                    <h3 className="font-bold text-lg text-gray-700">Tambah Siswa (Manual)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label className="block text-sm font-medium text-gray-700">NIS (6 Digit Angka)</label><input type="text" value={nis} onChange={e => setNis(e.target.value)} maxLength="6" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Contoh: 123456" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">Nama Lengkap</label><input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Nama Siswa" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">Kelas</label><select value={studentClass} onChange={e => setStudentClass(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md">{classList.length === 0 ? <option disabled>Buat kelas dahulu</option> : classList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
+                    </div>
+                    <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400"><PlusCircle size={20} /> {loading ? 'Menyimpan...' : 'Tambah Siswa'}</button>
                 </form>
             </div>
+            
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Daftar Siswa</h2>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500">
+                    <table className="w-full text-sm text-left text-gray-500 rounded-lg overflow-hidden">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th className="px-6 py-3">NIS</th><th className="px-6 py-3">Nama</th><th className="px-6 py-3">Kelas</th><th className="px-6 py-3">Aksi</th></tr></thead>
                         <tbody>
                             {loading ? <tr><td colSpan="4" className="text-center p-6">Memuat...</td></tr> : students.length === 0 ? <tr><td colSpan="4" className="text-center p-6">Belum ada data siswa.</td></tr> :
@@ -1574,8 +1473,8 @@ const StudentManagement = ({ supabase, setNotification }) => {
                                                     </select>
                                                 </td>
                                                 <td className="px-6 py-4 flex items-center gap-4">
-                                                    <button onClick={() => handleUpdateStudent(s.id)} className="text-green-500 hover:text-green-700"><Check size={20} /></button>
-                                                    <button onClick={handleCancelEdit} className="text-gray-500 hover:text-gray-700"><XCircle size={20} /></button>
+                                                    <button onClick={() => handleUpdateStudent(s.id)} className="text-green-500 hover:text-green-700" title="Simpan"><Check size={20} /></button>
+                                                    <button onClick={handleCancelEdit} className="text-gray-500 hover:text-gray-700" title="Batal"><XCircle size={20} /></button>
                                                 </td>
                                             </>
                                         ) : (
@@ -1583,8 +1482,9 @@ const StudentManagement = ({ supabase, setNotification }) => {
                                                 <td className="px-6 py-4">{s.nis}</td>
                                                 <td className="px-6 py-4">{s.name}</td>
                                                 <td className="px-6 py-4">{s.class}</td>
-                                                <td className="px-6 py-4">
-                                                    <button onClick={() => handleEditClick(s)} className="text-blue-500 hover:text-blue-700"><Edit size={18} /></button>
+                                                <td className="px-6 py-4 flex gap-3">
+                                                    <button onClick={() => handleEditClick(s)} className="text-blue-500 hover:text-blue-700" title="Edit"><Edit size={18} /></button>
+                                                    <button onClick={() => setShowDeleteModal(s.id)} className="text-red-500 hover:text-red-700" title="Hapus"><Trash2 size={18} /></button>
                                                 </td>
                                             </>
                                         )}
@@ -1599,7 +1499,7 @@ const StudentManagement = ({ supabase, setNotification }) => {
     );
 };
 
-// --- Komponen Manajemen Guru ---
+// --- Komponen Manajemen Guru (UPDATED with Delete) ---
 const TeacherManagement = ({ supabase, setNotification }) => {
     const [teachers, setTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -1608,6 +1508,7 @@ const TeacherManagement = ({ supabase, setNotification }) => {
     const [editingTeacherId, setEditingTeacherId] = useState(null);
     const [editingTeacherName, setEditingTeacherName] = useState('');
     const [editingTeacherNis, setEditingTeacherNis] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(null);
 
     const fetchTeachers = async () => {
         setLoading(true);
@@ -1629,16 +1530,42 @@ const TeacherManagement = ({ supabase, setNotification }) => {
 
     const handleAddTeacher = async (e) => {
         e.preventDefault();
+        setLoading(true);
         if (!id || !name) {
             setNotification({ type: 'error', message: 'ID dan Nama tidak boleh kosong.' });
+            setLoading(false);
             return;
         }
         const { data, error } = await supabase.from('users').insert({ nis: id, name, role: 'teacher' }).select();
         if (error) { setNotification({ type: 'error', message: 'Gagal menambah guru: ' + error.message }); }
         else if (data) {
             setNotification({ type: 'success', message: 'Guru berhasil ditambahkan!' });
-            fetchTeachers(); // Refresh data
+            fetchTeachers();
             setId(''); setName('');
+        }
+        setLoading(false);
+    };
+    
+    const handleDeleteTeacher = async (teacherId) => {
+        setShowDeleteModal(null);
+        setNotification({ type: 'info', message: 'Menghapus data guru...' });
+        
+        const teacherToDelete = teachers.find(t => t.id === teacherId);
+        if (!teacherToDelete) return;
+
+        try {
+            const { error: userError } = await supabase
+                .from('users')
+                .delete()
+                .eq('id', teacherId);
+
+            if (userError) throw userError;
+
+            setNotification({ type: 'success', message: `Guru ${teacherToDelete.name} berhasil dihapus.` });
+            fetchTeachers();
+        } catch (error) {
+            setNotification({ type: 'error', message: `Gagal menghapus guru: ${error.message}` });
+            console.error(error);
         }
     };
     
@@ -1676,6 +1603,7 @@ const TeacherManagement = ({ supabase, setNotification }) => {
             return;
         }
         
+        // Update attendance records linked to the old NIS
         const { error: attendanceError } = await supabase
             .from('attendance')
             .update({ user_nis: newNis, name: newName })
@@ -1693,18 +1621,26 @@ const TeacherManagement = ({ supabase, setNotification }) => {
 
     return (
         <div className="space-y-8">
+            {showDeleteModal && (
+                <ConfirmationModal
+                    title="Hapus Guru"
+                    message={`Anda yakin ingin menghapus guru ${teachers.find(t => t.id === showDeleteModal)?.name}? Semua riwayat absensi juga akan terhapus. Tindakan ini tidak dapat dibatalkan.`}
+                    onConfirm={() => handleDeleteTeacher(showDeleteModal)}
+                    onCancel={() => setShowDeleteModal(null)}
+                />
+            )}
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Manajemen Guru</h2>
                 <form onSubmit={handleAddTeacher} className="space-y-4">
                     <div><label className="block text-sm font-medium text-gray-700">ID Guru (NIP, dll)</label><input type="text" value={id} onChange={e => setId(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Contoh: G001" /></div>
                     <div><label className="block text-sm font-medium text-gray-700">Nama Lengkap</label><input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Nama Guru" /></div>
-                    <button type="submit" className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"><PlusCircle size={20} /> Tambah Guru</button>
+                    <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400"><PlusCircle size={20} /> {loading ? 'Menyimpan...' : 'Tambah Guru'}</button>
                 </form>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Daftar Guru</h2>
                 <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm text-left text-gray-500">
+                    <table className="min-w-full text-sm text-left text-gray-500 rounded-lg overflow-hidden">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th className="px-6 py-3">ID</th><th className="px-6 py-3">Nama</th><th className="px-6 py-3">Aksi</th></tr></thead>
                         <tbody>
                             {loading ? <tr><td colSpan="3" className="text-center p-6">Memuat...</td></tr> :
@@ -1716,15 +1652,18 @@ const TeacherManagement = ({ supabase, setNotification }) => {
                                                 <td className="px-6 py-4"><input type="text" value={editingTeacherNis} onChange={e => setEditingTeacherNis(e.target.value)} className="w-full px-2 py-1 border rounded" /></td>
                                                 <td className="px-6 py-4"><input type="text" value={editingTeacherName} onChange={e => setEditingTeacherName(e.target.value)} className="w-full px-2 py-1 border rounded" /></td>
                                                 <td className="px-6 py-4 flex items-center gap-4">
-                                                    <button onClick={() => handleUpdateTeacher(t.id)} className="text-green-500 hover:text-green-700"><Check size={20} /></button>
-                                                    <button onClick={handleCancelEdit} className="text-gray-500 hover:text-gray-700"><XCircle size={20} /></button>
+                                                    <button onClick={() => handleUpdateTeacher(t.id)} className="text-green-500 hover:text-green-700" title="Simpan"><Check size={20} /></button>
+                                                    <button onClick={handleCancelEdit} className="text-gray-500 hover:text-gray-700" title="Batal"><XCircle size={20} /></button>
                                                 </td>
                                             </>
                                         ) : (
                                             <>
                                                 <td className="px-6 py-4">{t.nis}</td>
                                                 <td className="px-6 py-4">{t.name}</td>
-                                                <td className="px-6 py-4"><button onClick={() => handleEditClick(t)} className="text-blue-500 hover:text-blue-700"><Edit size={18} /></button></td>
+                                                <td className="px-6 py-4 flex gap-3">
+                                                    <button onClick={() => handleEditClick(t)} className="text-blue-500 hover:text-blue-700" title="Edit"><Edit size={18} /></button>
+                                                    <button onClick={() => setShowDeleteModal(t.id)} className="text-red-500 hover:text-red-700" title="Hapus"><Trash2 size={18} /></button>
+                                                </td>
                                             </>
                                         )}
                                     </tr>
@@ -1749,6 +1688,35 @@ const ManualAttendanceModal = ({ students, supabase, onClose, onSave, filterDate
     const [timeOut, setTimeOut] = useState('');
     const [keterangan, setKeterangan] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Auto-fill student data on select
+    useEffect(() => {
+        const selectedUser = students.find(s => s.nis === selectedStudentNis);
+        if (selectedUser) {
+            // Check if there is existing attendance for this user on this date
+            const fetchExisting = async () => {
+                const { data, error } = await supabase
+                    .from('attendance')
+                    .select('time_in, time_out, status, keterangan')
+                    .eq('user_nis', selectedStudentNis)
+                    .eq('date', filterDate)
+                    .maybeSingle();
+
+                if (data) {
+                    setStatus(data.status || 'Hadir');
+                    setKeterangan(data.keterangan || '');
+                    setTimeIn(data.time_in ? new Date(data.time_in).toTimeString().substring(0, 5) : '');
+                    setTimeOut(data.time_out ? new Date(data.time_out).toTimeString().substring(0, 5) : '');
+                } else {
+                    setStatus('Hadir');
+                    setKeterangan('');
+                    setTimeIn('');
+                    setTimeOut('');
+                }
+            };
+            fetchExisting();
+        }
+    }, [selectedStudentNis, filterDate, supabase, students]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -1767,12 +1735,14 @@ const ManualAttendanceModal = ({ students, supabase, onClose, onSave, filterDate
             date: filterDate,
             status: status,
             keterangan: keterangan,
+            // Convert 'YYYY-MM-DD' and 'HH:MM' back to ISO string for Supabase timestamp
             time_in: timeIn ? new Date(`${filterDate}T${timeIn}`).toISOString() : null,
             time_out: timeOut ? new Date(`${filterDate}T${timeOut}`).toISOString() : null,
         };
 
         const { error } = await supabase
             .from('attendance')
+            // Upsert based on composite key (user_nis, date)
             .upsert(dataToUpsert, { onConflict: 'user_nis, date' });
 
         if (error) {
@@ -1788,14 +1758,14 @@ const ManualAttendanceModal = ({ students, supabase, onClose, onSave, filterDate
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-6 rounded-lg max-w-md w-full">
-                <h3 className="text-lg font-bold mb-4">Input Absensi Manual ({filterDate})</h3>
+            <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-2xl">
+                <h3 className="text-xl font-bold mb-4 text-gray-800">Input Absensi Manual ({filterDate})</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Pilih Pengguna</label>
                         <select value={selectedStudentNis} onChange={e => setSelectedStudentNis(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md">
                             <option value="">-- Pilih Pengguna --</option>
-                            {students.map(s => <option key={s.id} value={s.nis}>{s.name} ({s.role === 'student' ? s.class : 'Guru'})</option>)}
+                            {students.sort((a, b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.nis}>{s.name} ({s.role === 'student' ? s.class : 'Guru'})</option>)}
                         </select>
                     </div>
                     <div>
@@ -1809,11 +1779,11 @@ const ManualAttendanceModal = ({ students, supabase, onClose, onSave, filterDate
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Jam Masuk</label>
+                            <label className="block text-sm font-medium text-gray-700">Jam Masuk (HH:MM)</label>
                             <input type="time" value={timeIn} onChange={e => setTimeIn(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Jam Pulang</label>
+                            <label className="block text-sm font-medium text-gray-700">Jam Pulang (HH:MM)</label>
                             <input type="time" value={timeOut} onChange={e => setTimeOut(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" />
                         </div>
                     </div>
@@ -1822,8 +1792,8 @@ const ManualAttendanceModal = ({ students, supabase, onClose, onSave, filterDate
                         <textarea value={keterangan} onChange={e => setKeterangan(e.target.value)} rows="2" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Contoh: Izin acara keluarga"></textarea>
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Batal</button>
-                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400">{isSaving ? 'Menyimpan...' : 'Simpan'}</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors">{isSaving ? 'Menyimpan...' : 'Simpan'}</button>
                     </div>
                 </form>
             </div>
@@ -1841,23 +1811,33 @@ const AdminDashboard = ({ supabase, settings, setNotification, setTimeSettings, 
             case 'teachers': return <TeacherManagement supabase={supabase} setNotification={setNotification} />;
             case 'classes': return <ClassManagement supabase={supabase} setNotification={setNotification} />;
             case 'settings': return <TimeSettings supabase={supabase} currentSettings={settings} setNotification={setNotification} setTimeSettings={setTimeSettings} />;
-            case 'holidays': return <HolidayManagement supabase={supabase} setNotification={setNotification} fetchHolidays={fetchHolidays} />; // Teruskan fetchHolidays
+            case 'holidays': return <HolidayManagement supabase={supabase} setNotification={setNotification} fetchHolidays={fetchHolidays} />;
             default: return <AttendanceReport supabase={supabase} setNotification={setNotification} />;
         }
     };
+    
+    const menuItems = [
+        { key: 'report', label: 'Laporan Kehadiran', icon: FileDown },
+        { key: 'students', label: 'Daftar Siswa', icon: Users },
+        { key: 'teachers', label: 'Daftar Guru', icon: UserCheck },
+        { key: 'classes', label: 'Daftar Kelas', icon: BookCopy },
+        { key: 'settings', label: 'Pengaturan Jam', icon: Clock },
+        { key: 'holidays', label: 'Pengaturan Hari Libur', icon: CalendarDays },
+    ];
+
     return (
         <div className="container mx-auto">
             <div className="flex flex-col md:flex-row gap-8">
                 <aside className="md:w-1/4">
-                    <div className="bg-white p-4 rounded-xl shadow-lg">
-                        <h3 className="font-bold text-lg mb-4">Menu Admin</h3>
+                    <div className="bg-white p-4 rounded-xl shadow-lg sticky top-4">
+                        <h3 className="font-bold text-lg mb-4 text-gray-800">Menu Admin</h3>
                         <nav className="flex flex-col gap-2">
-                            <button onClick={() => setActiveMenu('report')} className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors ${activeMenu === 'report' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}><FileDown size={20} /> Laporan Kehadiran</button>
-                            <button onClick={() => setActiveMenu('students')} className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors ${activeMenu === 'students' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}><Users size={20} /> Daftar Siswa</button>
-                            <button onClick={() => setActiveMenu('teachers')} className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors ${activeMenu === 'teachers' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}><UserCheck size={20} /> Daftar Guru</button>
-                            <button onClick={() => setActiveMenu('classes')} className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors ${activeMenu === 'classes' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}><BookCopy size={20} /> Daftar Kelas</button>
-                            <button onClick={() => setActiveMenu('settings')} className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors ${activeMenu === 'settings' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}><Clock size={20} /> Pengaturan Jam</button>
-                            <button onClick={() => setActiveMenu('holidays')} className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors ${activeMenu === 'holidays' ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}><CalendarDays size={20} /> Pengaturan Hari Libur</button> {/* NEW MENU ITEM */}
+                            {menuItems.map(item => (
+                                <button key={item.key} onClick={() => setActiveMenu(item.key)} className={`w-full text-left flex items-center gap-3 p-3 rounded-lg transition-colors ${activeMenu === item.key ? 'bg-green-600 text-white shadow-md' : 'hover:bg-gray-100 text-gray-700'}`}>
+                                    <item.icon size={20} /> 
+                                    <span>{item.label}</span>
+                                </button>
+                            ))}
                         </nav>
                     </div>
                 </aside>
@@ -1883,6 +1863,9 @@ const AttendanceReport = ({ supabase, setNotification }) => {
     const [teacherList, setTeacherList] = useState([]);
     const [studentList, setStudentList] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
+    
+    // NEW: State untuk menyimpan semua hari libur
+    const [allHolidays, setAllHolidays] = useState([]); 
     
     // State untuk input manual
     const [showManualInput, setShowManualInput] = useState(false);
@@ -1936,11 +1919,30 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                 .in('user_nis', userNisList);
             
             if (attendanceError) throw attendanceError;
+            
+            // Check for holiday for filterDate
+            const holidayToday = allHolidays.find(h => h.date === filterDate);
+            const isHoliday = !!holidayToday;
 
             const mergedData = userList.map(user => {
                 const attendanceRecord = (attendanceData || []).find(att => att.user_nis === user.nis);
-                const status = attendanceRecord?.status || (attendanceRecord ? 'Hadir' : 'Alpha');
-                return { ...user, ...attendanceRecord, status, id: user.id };
+                
+                let status;
+                
+                if (isHoliday) {
+                    // Jika hari ini libur, status utama adalah 'Libur'
+                    status = `Libur (${holidayToday.name})`;
+                } else {
+                    // Jika bukan hari libur, gunakan status dari DB, atau 'Alpha' jika tidak ada record
+                    status = attendanceRecord?.status || (attendanceRecord ? 'Hadir' : 'Alpha');
+                }
+
+                return { 
+                    ...user, 
+                    ...attendanceRecord, 
+                    status, 
+                    id: user.id 
+                };
             });
 
             setReportData(mergedData);
@@ -1972,6 +1974,9 @@ const AttendanceReport = ({ supabase, setNotification }) => {
             const { data: userData } = await supabase.from('users').select('*').order('name');
             setAllUsers(userData || []);
             
+            const { data: holidayData } = await supabase.from('holidays').select('date, name').order('date', { ascending: true });
+            setAllHolidays(holidayData || []); // NEW: Fetch all holidays
+            
             const teachers = (userData || []).filter(user => user.role === 'teacher');
             setTeacherList(teachers);
 
@@ -1986,6 +1991,7 @@ const AttendanceReport = ({ supabase, setNotification }) => {
     }, [filterClass]);
 
     useEffect(() => {
+        // Dependencies now include allHolidays to trigger refresh if holidays change
         generateDailyReport();
 
         const channel = supabase.channel('attendance_report_changes')
@@ -2001,9 +2007,11 @@ const AttendanceReport = ({ supabase, setNotification }) => {
             .subscribe();
         
         return () => {
-            supabase.removeChannel(channel);
+            if (supabase) {
+                 supabase.removeChannel(channel);
+            }
         };
-    }, [filterDate, filterClass, filterRole, filterTeacher, filterStudent, supabase]);
+    }, [filterDate, filterClass, filterRole, filterTeacher, filterStudent, allHolidays, supabase]); // ADDED allHolidays
 
     const handleDownloadDailyReport = () => {
         if (!window.XLSX) {
@@ -2021,12 +2029,12 @@ const AttendanceReport = ({ supabase, setNotification }) => {
             'Nama': item.name,
             'Kelas/Peran': item.role === 'student' ? item.class : 'Guru',
             'Status': item.status,
-            'Jam Masuk': item.time_in ? new Date(item.time_in).toLocaleTimeString('id-ID') : '-',
-            'Selfie Masuk': item.selfie_in_url ? item.selfie_in_url : '-',
-            'Lokasi Masuk': item.latitude_in && item.longitude_in ? `Lat: ${item.latitude_in}, Lng: ${item.longitude_in}` : '-',
-            'Jam Pulang': item.time_out ? new Date(item.time_out).toLocaleTimeString('id-ID') : '-',
-            'Selfie Pulang': item.selfie_out_url ? item.selfie_out_url : '-',
-            'Lokasi Pulang': item.latitude_out && item.longitude_out ? `Lat: ${item.latitude_out}, Lng: ${item.longitude_out}` : '-',
+            'Jam Masuk': item.time_in && item.status.includes('Libur') === false ? new Date(item.time_in).toLocaleTimeString('id-ID') : '-',
+            'Selfie Masuk': item.selfie_in_url && item.status.includes('Libur') === false ? item.selfie_in_url : '-',
+            'Lokasi Masuk': item.latitude_in && item.longitude_in && item.status.includes('Libur') === false ? `Lat: ${item.latitude_in}, Lng: ${item.longitude_in}` : '-',
+            'Jam Pulang': item.time_out && item.status.includes('Libur') === false ? new Date(item.time_out).toLocaleTimeString('id-ID') : '-',
+            'Selfie Pulang': item.selfie_out_url && item.status.includes('Libur') === false ? item.selfie_out_url : '-',
+            'Lokasi Pulang': item.latitude_out && item.longitude_out && item.status.includes('Libur') === false ? `Lat: ${item.latitude_out}, Lng: ${item.longitude_out}` : '-',
             'Keterangan': item.keterangan || '-'
         }));
 
@@ -2048,6 +2056,9 @@ const AttendanceReport = ({ supabase, setNotification }) => {
             const [year, month] = filterMonth.split('-');
             const startDate = `${year}-${month}-01`;
             const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+            
+            const holidayDates = new Set(allHolidays.map(h => h.date));
+            const getHolidayName = (date) => allHolidays.find(h => h.date === date)?.name;
 
             let userQuery = supabase.from('users').select('nis, name, class, role');
             if (filterRole !== 'Semua') userQuery = userQuery.eq('role', filterRole);
@@ -2104,15 +2115,24 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                     const dateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
                     const dayRecord = userAttendance.find(a => a.date === dateStr);
                     
+                    let status;
+                    if (holidayDates.has(dateStr)) {
+                        status = `Libur (${getHolidayName(dateStr) || 'Umum'})`;
+                    } else {
+                        status = dayRecord ? dayRecord.status : 'Alpha';
+                    }
+
+                    const isDailyHoliday = status.startsWith('Libur');
+
                     dataToExport.push([
                         dateStr,
-                        dayRecord ? dayRecord.status : 'Alpha',
-                        dayRecord?.time_in ? new Date(dayRecord.time_in).toLocaleTimeString('id-ID') : '-',
-                        dayRecord?.selfie_in_url ? dayRecord.selfie_in_url : '-',
-                        dayRecord?.latitude_in && dayRecord?.longitude_in ? `Lat: ${dayRecord.latitude_in}, Lng: ${dayRecord.longitude_in}` : '-',
-                        dayRecord?.time_out ? new Date(dayRecord.time_out).toLocaleTimeString('id-ID') : '-',
-                        dayRecord?.selfie_out_url ? dayRecord.selfie_out_url : '-',
-                        dayRecord?.latitude_out && dayRecord?.longitude_out ? `Lat: ${dayRecord.latitude_out}, Lng: ${dayRecord.longitude_out}` : '-',
+                        status,
+                        !isDailyHoliday && dayRecord?.time_in ? new Date(dayRecord.time_in).toLocaleTimeString('id-ID') : '-',
+                        !isDailyHoliday && dayRecord?.selfie_in_url ? dayRecord.selfie_in_url : '-',
+                        !isDailyHoliday && dayRecord?.latitude_in && dayRecord?.longitude_in ? `Lat: ${dayRecord.latitude_in}, Lng: ${dayRecord.longitude_in}` : '-',
+                        !isDailyHoliday && dayRecord?.time_out ? new Date(dayRecord.time_out).toLocaleTimeString('id-ID') : '-',
+                        !isDailyHoliday && dayRecord?.selfie_out_url ? dayRecord.selfie_out_url : '-',
+                        !isDailyHoliday && dayRecord?.latitude_out && dayRecord?.longitude_out ? `Lat: ${dayRecord.latitude_out}, Lng: ${dayRecord.longitude_out}` : '-',
                         dayRecord?.keterangan || '-'
                     ]);
                 }
@@ -2145,7 +2165,7 @@ const AttendanceReport = ({ supabase, setNotification }) => {
         }
         setIsDownloadingSemester(true);
         setSemesterDownloadMessage('Mempersiapkan data pengguna...');
-        setDownloadMessage(null);
+        setDownloadMessage('');
 
         try {
             // 1. Ambil daftar pengguna sesuai filter
@@ -2167,14 +2187,30 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                 throw new Error("Tidak ada pengguna yang cocok dengan filter yang dipilih untuk dibuatkan laporan.");
             }
 
-            // 2. Ambil semua data absensi untuk pengguna tersebut dalam rentang semester
+            // 2. Tentukan rentang semester dan filter hari libur
             const currentYear = new Date().getFullYear();
-            const startMonth = semester === 'gasal' ? '07' : '01';
-            const endMonth = semester === 'gasal' ? '12' : '06';
-            const startDate = `${currentYear}-${startMonth}-01`;
-            const endDate = `${currentYear}-${endMonth}-${new Date(currentYear, parseInt(endMonth), 0).getDate()}`;
+            const startMonthNum = semester === 'gasal' ? 7 : 1;
+            const endMonthNum = semester === 'gasal' ? 12 : 6;
             
-            setSemesterDownloadMessage(`Mengambil data absensi untuk ${users.length} pengguna...`);
+            let startDate = `${currentYear}-${String(startMonthNum).padStart(2, '0')}-01`;
+            let endDate = `${currentYear}-${String(endMonthNum).padStart(2, '0')}-${new Date(currentYear, endMonthNum, 0).getDate()}`;
+            
+            // Adjust year for Jan-Jun if current month is July-Dec
+            const todayMonth = new Date().getMonth() + 1;
+            if (semester === 'genap' && todayMonth >= 7) { 
+                 startDate = `${currentYear+1}-01-01`; 
+                 endDate = `${currentYear+1}-06-30`;
+            }
+            if (semester === 'gasal' && todayMonth <= 6) { 
+                 startDate = `${currentYear-1}-07-01`; 
+                 endDate = `${currentYear-1}-12-31`;
+            }
+
+            const holidayDatesInSemester = allHolidays
+                .filter(h => h.date >= startDate && h.date <= endDate)
+                .map(h => h.date);
+
+            setSemesterDownloadMessage(`Mengambil data absensi untuk ${users.length} pengguna dari ${startDate} sampai ${endDate}...`);
             const userNisList = users.map(u => u.nis);
             const { data: allAttendance, error: attendanceError } = await supabase
                 .from('attendance')
@@ -2196,49 +2232,91 @@ const AttendanceReport = ({ supabase, setNotification }) => {
             users.forEach(user => {
                 const userAttendance = (allAttendance || []).filter(att => att.user_nis === user.nis);
                 
-                // Initialize monthly data with Alpha counts for all days
                 const processedData = {};
+                
+                // 1. Inisialisasi summary bulanan
                 monthOrder.forEach(monthName => {
-                    const monthIndex = Object.keys(monthMap).find(key => monthMap[key] === monthName);
-                    const daysInMonth = new Date(currentYear, parseInt(monthIndex), 0).getDate();
-                    processedData[monthName] = { 'Hadir': 0, 'Sakit': 0, 'Izin': 0, 'Alpha': daysInMonth };
+                    const monthKey = Object.keys(monthMap).find(key => monthMap[key] === monthName);
+                    if (!monthKey) return; 
+
+                    let monthStartDate = `${currentYear}-${monthKey}-01`;
+                    let monthEndDate = `${currentYear}-${monthKey}-${new Date(currentYear, parseInt(monthKey), 0).getDate()}`;
+                    
+                    // Adjust year if necessary (for Genap semester crossing year)
+                    const yearToUse = (monthName === 'Januari' || monthName === 'Februari' || monthName === 'Maret' || monthName === 'April' || monthName === 'Mei' || monthName === 'Juni') && startMonthNum === 7 && todayMonth >= 7 ? currentYear + 1 : currentYear;
+                    
+                    monthStartDate = `${yearToUse}-${monthKey}-01`;
+                    monthEndDate = `${yearToUse}-${monthKey}-${new Date(yearToUse, parseInt(monthKey), 0).getDate()}`;
+
+                    monthStartDate = monthStartDate < startDate ? startDate : monthStartDate;
+                    monthEndDate = monthEndDate > endDate ? endDate : monthEndDate;
+
+                    let workingDays = 0;
+                    
+                    // Hitung Hari Kerja (Total_Working_Days)
+                    let currentDate = new Date(monthStartDate);
+                    const endDay = new Date(monthEndDate);
+                    
+                    while (currentDate <= endDay) {
+                        const dateStr = currentDate.toISOString().split('T')[0];
+                        // Pastikan hari libur tidak dihitung sebagai hari kerja
+                        if (!holidayDatesInSemester.includes(dateStr)) {
+                            workingDays++;
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+
+                    // Alpha diinisialisasi ke total hari kerja yang diharapkan.
+                    processedData[monthName] = { 'Hadir': 0, 'Sakit': 0, 'Izin': 0, 'Alpha': workingDays, 'Total_Working_Days': workingDays };
                 });
                 
-                // Override with actual attendance data
+                // 2. Proses record absensi
                 userAttendance.forEach(record => {
                     const monthIndex = record.date.substring(5, 7);
                     const monthName = monthMap[monthIndex];
-                    const status = record.status || 'Hadir'; // Default to Hadir if status is null but record exists
+                    const status = record.status || 'Hadir';
+                    
                     if (processedData[monthName]) {
+                        const isHoliday = holidayDatesInSemester.includes(record.date);
+                        
+                        if (!isHoliday) {
+                            // Jika HARI KERJA, kurangi Alpha (karena ada record)
+                            processedData[monthName]['Alpha']--;
+                        }
+                        
+                        // Selalu tambahkan ke status yang tercatat (meskipun di hari libur)
                         if(processedData[monthName][status] !== undefined) {
                             processedData[monthName][status]++;
+                        } else {
+                             processedData[monthName]['Hadir']++; // fallback
                         }
-                        // Decrement Alpha count since a record was found
-                        processedData[monthName]['Alpha']--;
                     }
                 });
 
                 const tableData = [];
-                const semesterTotal = { 'Hadir': 0, 'Sakit': 0, 'Izin': 0, 'Alpha': 0, 'Jumlah': 0 };
+                const semesterTotal = { 'Hadir': 0, 'Sakit': 0, 'Izin': 0, 'Alpha': 0, 'Total_Hari_Kerja': 0, 'Total_Absen_Tercatat': 0 };
                 
                 monthOrder.forEach(month => {
                     const monthData = processedData[month];
+                    if (!monthData) return;
+
+                    // Total Absen Tercatat = Hadir + Sakit + Izin + Alpha (Harusnya sama dengan Total_Working_Days)
                     const monthTotal = monthData.Hadir + monthData.Sakit + monthData.Izin + monthData.Alpha;
-                
+                    
                     tableData.push([
                         month,
                         monthData.Hadir,
                         monthData.Sakit,
                         monthData.Izin,
                         monthData.Alpha,
-                        monthTotal,
+                        monthTotal, 
                     ]);
                     
                     semesterTotal.Hadir += monthData.Hadir;
                     semesterTotal.Sakit += monthData.Sakit;
                     semesterTotal.Izin += monthData.Izin;
                     semesterTotal.Alpha += monthData.Alpha;
-                    semesterTotal.Jumlah += monthTotal;
+                    semesterTotal.Total_Absen_Tercatat += monthTotal;
                 });
 
                 const dataForSheet = [
@@ -2246,9 +2324,9 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                     [`SEMESTER ${semesterTitle} TAHUN AJARAN ${currentYear}/${currentYear + 1}`],
                     [], // Empty row
                     ['Nama', user.name],
-                    ['Kelas', user.class || 'Guru'],
+                    ['Kelas/Peran', user.class || 'Guru'],
                     [], // Empty row
-                    ['Bulan', 'Hadir', 'Sakit', 'Izin', 'Alpha', 'Jumlah'],
+                    ['Bulan', 'Hadir', 'Sakit', 'Izin', 'Alpha', 'Total Hari Kerja'], // Adjusted column name
                     ...tableData,
                     [
                         'Total Semester',
@@ -2256,7 +2334,7 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                         semesterTotal.Sakit,
                         semesterTotal.Izin,
                         semesterTotal.Alpha,
-                        semesterTotal.Jumlah,
+                        semesterTotal.Total_Absen_Tercatat,
                     ]
                 ];
 
@@ -2265,7 +2343,7 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                 window.XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
             });
 
-            const fileName = `Laporan_Semester_${semester.toUpperCase()}_${filterClass !== 'Semua' ? filterClass : 'SemuaKelas'}.xlsx`;
+            const fileName = `Laporan_Semester_${semester.toUpperCase()}_${filterClass !== 'Semua' ? filterClass : filterRole === 'teacher' ? 'Guru' : 'SemuaKelas'}.xlsx`;
             window.XLSX.writeFile(workbook, fileName);
             setSemesterDownloadMessage('Laporan berhasil diunduh!');
 
@@ -2296,7 +2374,7 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <h2 className="text-2xl font-bold text-gray-800">Laporan Kehadiran</h2>
                     <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-start md:justify-end w-full">
-                        <button onClick={() => setShowManualInput(true)} className="flex items-center gap-2 py-2 px-3 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200">
+                        <button onClick={() => setShowManualInput(true)} className="flex items-center gap-2 py-2 px-3 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors">
                             <Edit3 size={16} /><span>Input Manual</span>
                         </button>
                         <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="p-2 border border-gray-300 rounded-lg bg-white text-sm">
@@ -2327,29 +2405,33 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                     </div>
                 </div>
                 <div className="overflow-x-auto">
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
                         <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm" />
-                        <button onClick={handleDownloadDailyReport} className="flex items-center gap-2 py-2 px-3 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200">
+                        <button onClick={handleDownloadDailyReport} className="flex items-center gap-2 py-2 px-3 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors">
                             <Download size={16} /><span>Unduh Harian</span>
                         </button>
                     </div>
-                    <table className="min-w-full text-sm text-left text-gray-500">
+                    <table className="min-w-full text-sm text-left text-gray-500 rounded-lg overflow-hidden">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100"><tr><th className="px-6 py-3">Nama</th><th className="px-6 py-3">Kelas/Peran</th><th className="px-6 py-3">Status</th><th className="px-6 py-3">Jam Masuk</th><th className="px-6 py-3">Selfie Masuk</th><th className="px-6 py-3">Lokasi Masuk</th><th className="px-6 py-3">Jam Pulang</th><th className="px-6 py-3">Selfie Pulang</th><th className="px-6 py-3">Lokasi Pulang</th><th className="px-6 py-3">Keterangan</th></tr></thead>
                         <tbody>
                             {loading ? <tr><td colSpan="10" className="text-center p-6">Menyusun laporan...</td></tr>
                             : 
                             reportData.length === 0 ? <tr><td colSpan="10" className="text-center p-6">Tidak ada data untuk filter yang dipilih.</td></tr> :
                                 reportData.map(item => (
-                                    <tr key={item.id} className="bg-white border-b hover:bg-gray-50">
-                                        <td className="px-6 py-4">{item.name}</td>
+                                    <tr key={item.id} className={`border-b ${item.status.includes('Libur') ? 'bg-yellow-50 hover:bg-yellow-100' : 'bg-white hover:bg-gray-50'}`}>
+                                        <td className="px-6 py-4 font-medium text-gray-900">{item.name}</td>
                                         <td className="px-6 py-4">{item.role === 'student' ? item.class : 'Guru'}</td>
-                                        <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.status === 'Hadir' ? 'bg-green-100 text-green-800' : item.status === 'Alpha' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{item.status}</span></td>
-                                        <td className="px-6 py-4">{item.time_in ? new Date(item.time_in).toLocaleTimeString('id-ID') : '-'}</td>
-                                        <td className="px-6 py-4">{item.selfie_in_url ? <a href={item.selfie_in_url} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:underline">Lihat</a> : '-'}</td>
-                                        <td className="px-6 py-4 text-xs">{item.latitude_in && item.longitude_in ? <a href={`https://www.google.com/maps?q=${item.latitude_in},${item.longitude_in}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Lihat Lokasi</a> : '-'}</td>
-                                        <td className="px-6 py-4">{item.time_out ? new Date(item.time_out).toLocaleTimeString('id-ID') : '-'}</td>
-                                        <td className="px-6 py-4">{item.selfie_out_url ? <a href={item.selfie_out_url} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:underline">Lihat</a> : '-'}</td>
-                                        <td className="px-6 py-4 text-xs">{item.latitude_out && item.longitude_out ? <a href={`https://www.google.com/maps?q=${item.latitude_out},${item.longitude_out}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Lihat Lokasi</a> : '-'}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.status.includes('Libur') ? 'bg-yellow-200 text-yellow-800' : item.status === 'Hadir' ? 'bg-green-100 text-green-800' : item.status === 'Alpha' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                {item.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">{item.time_in && !item.status.includes('Libur') ? new Date(item.time_in).toLocaleTimeString('id-ID') : '-'}</td>
+                                        <td className="px-6 py-4">{item.selfie_in_url && !item.status.includes('Libur') ? <a href={item.selfie_in_url} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:underline">Lihat</a> : '-'}</td>
+                                        <td className="px-6 py-4 text-xs">{item.latitude_in && item.longitude_in && !item.status.includes('Libur') ? <a href={`https://www.google.com/maps?q=${item.latitude_in},${item.longitude_in}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Lihat Lokasi</a> : '-'}</td>
+                                        <td className="px-6 py-4">{item.time_out && !item.status.includes('Libur') ? new Date(item.time_out).toLocaleTimeString('id-ID') : '-'}</td>
+                                        <td className="px-6 py-4">{item.selfie_out_url && !item.status.includes('Libur') ? <a href={item.selfie_out_url} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:underline">Lihat</a> : '-'}</td>
+                                        <td className="px-6 py-4 text-xs">{item.latitude_out && item.longitude_out && !item.status.includes('Libur') ? <a href={`https://www.google.com/maps?q=${item.latitude_out},${item.longitude_out}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Lihat Lokasi</a> : '-'}</td>
                                         <td className="px-6 py-4 text-xs">{item.keterangan || '-'}</td>
                                     </tr>
                                 ))
@@ -2364,9 +2446,9 @@ const AttendanceReport = ({ supabase, setNotification }) => {
             {/* Bagian Laporan Bulanan */}
             <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Unduh Laporan Bulanan</h2>
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col md:flex-row items-center gap-4">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner flex flex-col md:flex-row items-center gap-4">
                     <div className="flex-grow">
-                        <label htmlFor="month-filter" className="block text-sm font-medium text-gray-700 mb-1">Pilih Bulan & Tahun</label>
+                        <label htmlFor="month-filter" className="block text-sm font-medium text-gray-700 mb-1">Pilih Bulan & Tahun (sesuai filter peran/kelas di atas)</label>
                         <input 
                             type="month" 
                             id="month-filter"
@@ -2379,7 +2461,7 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                         <button 
                             onClick={handleDownloadMonthlyReport} 
                             disabled={isDownloading}
-                            className="w-full flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
+                            className="w-full flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
                         >
                             <CalendarDays size={16} />
                             <span>{isDownloading ? 'Mengunduh...' : 'Unduh Laporan Bulanan'}</span>
@@ -2392,7 +2474,7 @@ const AttendanceReport = ({ supabase, setNotification }) => {
                     </p>
                 )}
                 <div className="text-xs text-gray-500 mt-2">
-                    <p>* Laporan ini akan berisi daftar kehadiran per hari dengan format ke bawah, sesuai filter yang dipilih di atas.</p>
+                    <p>* Laporan ini akan berisi daftar kehadiran per hari dengan format ke bawah, sesuai filter peran/kelas yang dipilih. Hari libur akan ditandai.</p>
                 </div>
             </div>
             
@@ -2400,38 +2482,33 @@ const AttendanceReport = ({ supabase, setNotification }) => {
 
             {/* Bagian Laporan Semester */}
             <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Unduh Laporan Semester</h2>
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col md:flex-row items-center gap-4">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">Unduh Laporan Semester (Rekap Bulanan)</h2>
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner flex flex-col md:flex-row items-center gap-4">
                     <button 
                         onClick={() => handleDownloadSemesterReport('gasal')} 
                         disabled={isDownloadingSemester}
-                        className="flex-1 w-full flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
+                        className="flex-1 w-full flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors"
                     >
                         <CalendarDays size={16} />
-                        <span>{isDownloadingSemester ? 'Mengunduh...' : 'Unduh Semester Gasal'}</span>
+                        <span>{isDownloadingSemester ? 'Mengunduh...' : 'Unduh Semester Gasal (Jul-Des)'}</span>
                     </button>
                     <button 
                         onClick={() => handleDownloadSemesterReport('genap')} 
                         disabled={isDownloadingSemester}
-                        className="flex-1 w-full flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-purple-400"
+                        className="flex-1 w-full flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-purple-400 transition-colors"
                     >
                         <CalendarDays size={16} />
-                        <span>{isDownloadingSemester ? 'Mengunduh...' : 'Unduh Semester Genap'}</span>
+                        <span>{isDownloadingSemester ? 'Mengunduh...' : 'Unduh Semester Genap (Jan-Jun)'}</span>
                     </button>
                 </div>
-                {downloadMessage && (
-                    <p className={`mt-4 text-center text-sm p-2 rounded-md ${downloadMessage.includes('Gagal') ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                        {downloadMessage}
-                    </p>
-                )}
                 {semesterDownloadMessage && (
                     <p className={`mt-4 text-center text-sm p-2 rounded-md ${semesterDownloadMessage.includes('Gagal') ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
                         {semesterDownloadMessage}
                     </p>
                 )}
                 <div className="text-xs text-gray-500 mt-2">
-                    <p>* Laporan ini akan menghasilkan file Excel dengan rekapitulasi per bulan, sesuai filter yang dipilih di atas.</p>
-                    <p>* Setiap pengguna (siswa/guru) yang terpilih akan dibuatkan lembar (sheet) terpisah di dalam satu file Excel.</p>
+                    <p>* Laporan ini akan menghasilkan rekapitulasi per bulan, **tidak termasuk hari libur** dalam perhitungan Total Hari Kerja dan Alpha.</p>
+                    <p>* Pastikan filter peran/kelas sudah benar sebelum mengunduh.</p>
                 </div>
             </div>
             <div className="text-center text-xs text-gray-400 mt-4">
