@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/absen_manulbat/static/css/main.e6c13ad2.css",
+    "main.js": "/absen_manulbat/static/js/main.29261f57.js",
+    "index.html": "/absen_manulbat/index.html",
+    "main.e6c13ad2.css.map": "/absen_manulbat/static/css/main.e6c13ad2.css.map",
+    "main.29261f57.js.map": "/absen_manulbat/static/js/main.29261f57.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.29261f57.js"
+  ]
+}
