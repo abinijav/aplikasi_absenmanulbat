@@ -2,7 +2,7 @@
   "name": "aplikasi-absensi", 
   "version": "1.0.0",
   "private": true,
-  "homepage": "./", 
+  "homepage": "https://absenonlinekita-ux.github.io/absen_manulbat/", 
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "lucide-react": "^0.309.0",
