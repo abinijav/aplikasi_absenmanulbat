@@ -561,7 +561,9 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
             {showCamera && <CameraModal onCapture={handleSelfieCapture} onCancel={() => setShowCamera(false)} setNotification={setNotification} />}
             
             <div className="bg-white p-6 rounded-xl shadow-lg">
-               <h2 className="text-2xl font-bold text-gray-800 mb-4">{customTitle || "Dasbor Siswa"}</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+    {user.role === 'teacher' ? "Dasbor Guru" : "Dasbor Siswa"}
+</h2>
                 
                 {isHoliday && (
                     <div className="text-center p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg font-semibold border border-yellow-300">
