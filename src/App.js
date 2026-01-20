@@ -561,8 +561,10 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
             {showCamera && <CameraModal onCapture={handleSelfieCapture} onCancel={() => setShowCamera(false)} setNotification={setNotification} />}
             
             <div className="bg-white p-6 rounded-xl shadow-lg">
-               <h2 className="text-2xl font-bold text-gray-800 mb-4"><h2 className="text-2xl font-bold text-gray-800 mb-4">Dasbor Siswa</h2>
-                
+               <h2 className="text-2xl font-bold text-gray-800 mb-4">
+  {user?.role === 'teacher' ? 'Dasbor Guru' : 'Dasbor Siswa'}
+</h2>
+                 
                 {isHoliday && (
                     <div className="text-center p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg font-semibold border border-yellow-300">
                         <CalendarDays size={20} className="inline mr-2" /> Hari ini adalah Hari Libur: {holidayName || 'Tidak ada keterangan'}. Absensi ditutup.
@@ -598,7 +600,15 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                     </div>
                 </div>
                 }
-
+{/* Laporan Kehadiran Siswa Khusus Guru */}
+{user?.role === 'teacher' && (
+  <div className="mt-8 bg-white p-6 rounded-xl shadow-lg">
+    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+      Laporan Kehadiran Seluruh Siswa
+    </h2>
+    <AttendanceReport supabase={supabase} setNotification={setNotification} />
+  </div>
+)}
                 {todayAttendance && (
                     <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-inner">
                         <h3 className="font-bold text-lg mb-4 text-gray-700">Rekap Absensi Hari Ini ({getLocalDateString()})</h3>
@@ -643,7 +653,7 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                         </div>
                     </div>
                 )}
-                <div className="text-center text-xs text-gray-400 mt-4">
+                <div className="text-center text-xs text-gray-400 mt-6 pb-4">
                     <p>Created by Abi Nijav</p>
                 </div>
             </div>
