@@ -430,7 +430,16 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
 
         const now = new Date();
         const currentHour = now.getHours();
+// Tambahkan logika hari Jumat di sini
+    let checkinStart = settings.checkin_start_hour;
+    let checkinEnd = settings.checkin_end_hour;
+    let checkoutStart = settings.checkout_start_hour;
+    let checkoutEnd = settings.checkout_end_hour;
 
+    if (now.getDay() === 5) { // Jika hari Jumat
+        checkoutStart = 10; // Ganti sesuai jam pulang Jumat Anda
+        checkoutEnd = 11;   // Ganti sesuai jam pulang Jumat Anda
+    }
         const getAttendanceLocation = () => new Promise((resolve, reject) => {
             if (!navigator.geolocation) {
                 reject(new Error("Geolocation is not supported by your browser."));
@@ -459,14 +468,19 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
             return;
         }
 
-
+// Cek Hari Jumat (5 = Jumat)
+    const isFriday = new Date().getDay() === 5;
+    
+    // Tentukan jam pulang (jika Jumat gunakan 10 - 11, jika tidak gunakan settingan)
+    const checkoutStart = isFriday ? 10 : settings.checkout_start_hour;
+    const checkoutEnd = isFriday ? 11 : settings.checkout_end_hour;
         if (type === 'in' && (currentHour < settings.checkin_start_hour || currentHour >= settings.checkin_end_hour)) {
             setNotification({ type: 'error', message: `Absen masuk hanya bisa dilakukan antara pukul ${String(settings.checkin_start_hour).padStart(2, '0')}:00 - ${String(settings.checkin_end_hour).padStart(2, '0')}:00.` });
             return;
         }
 
-        if (type === 'out' && (currentHour < settings.checkout_start_hour || currentHour >= settings.checkout_end_hour)) {
-            setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(settings.checkout_start_hour).padStart(2, '0')}:00 - ${String(settings.checkout_end_hour).padStart(2, '0')}:00.` });
+        if (type === 'out' && (currentHour < checkoutStart || currentHour >= checkoutEnd)) {
+            setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(checkoutStart).padStart(2, '0')}:00 - ${String(checkoutEnd).padStart(2, '0')}:00.` });
             return;
         }
         
