@@ -468,21 +468,16 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
             return;
         }
 
-// Cek Hari Jumat (5 = Jumat)
-    const isFriday = new Date().getDay() === 5;
-    
-    // Tentukan jam pulang (jika Jumat gunakan 10 - 11, jika tidak gunakan settingan)
-    const checkoutStart = isFriday ? 10 : settings.checkout_start_hour;
-    const checkoutEnd = isFriday ? 11 : settings.checkout_end_hour;
-        if (type === 'in' && (currentHour < settings.checkin_start_hour || currentHour >= settings.checkin_end_hour)) {
-            setNotification({ type: 'error', message: `Absen masuk hanya bisa dilakukan antara pukul ${String(settings.checkin_start_hour).padStart(2, '0')}:00 - ${String(settings.checkin_end_hour).padStart(2, '0')}:00.` });
-            return;
-        }
+ // Pengecekan Absensi
+    if (type === 'in' && (currentHour < settings.checkin_start_hour || currentHour >= settings.checkin_end_hour)) {
+        setNotification({ type: 'error', message: `Absen masuk hanya bisa dilakukan antara pukul ${String(settings.checkin_start_hour).padStart(2, '0')}:00 - ${String(settings.checkin_end_hour).padStart(2, '0')}:00.` });
+        return;
+    }
 
-        if (type === 'out' && (currentHour < checkoutStart || currentHour >= checkoutEnd)) {
-         setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(checkoutStart).padStart(2, '0')}:00 - ${String(checkoutEnd).padStart(2, '0')}:00.` });
-        return;   
-        }
+    if (type === 'out' && (currentHour < settings.checkout_start_hour || currentHour >= settings.checkout_end_hour)) {
+        setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(settings.checkout_start_hour).padStart(2, '0')}:00 - ${String(settings.checkout_end_hour).padStart(2, '0')}:00.` });
+        return;
+    }
         
         setAttendanceType(type);
         setShowCamera(true);
