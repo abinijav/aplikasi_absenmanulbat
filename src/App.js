@@ -480,8 +480,8 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
         }
 
         if (type === 'out' && (currentHour < checkoutStart || currentHour >= checkoutEnd)) {
-            setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(checkoutStart).padStart(2, '0')}:00 - ${String(checkoutEnd).padStart(2, '0')}:00.` });
-            return;
+         setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(checkoutStart).padStart(2, '0')}:00 - ${String(checkoutEnd).padStart(2, '0')}:00.` });
+        return;   
         }
         
         setAttendanceType(type);
