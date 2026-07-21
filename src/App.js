@@ -373,7 +373,7 @@ const LoginScreen = ({ onLogin, setNotification }) => {
 };
 
 // --- Komponen {user.role === 'teacher' ? "Dasbor Guru" : "Dasbor Siswa"} ---
-const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday, holidayName }) => {
+const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday, holidayName, customTitle }) => {
     const [showCamera, setShowCamera] = useState(false);
     const [attendanceType, setAttendanceType] = useState('');
     const [todayAttendance, setTodayAttendance] = useState(null);
@@ -430,16 +430,7 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
 
         const now = new Date();
         const currentHour = now.getHours();
-// Tambahkan logika hari Jumat di sini
-    let checkinStart = settings.checkin_start_hour;
-    let checkinEnd = settings.checkin_end_hour;
-    let checkoutStart = settings.checkout_start_hour;
-    let checkoutEnd = settings.checkout_end_hour;
 
-    if (now.getDay() === 5) { // Jika hari Jumat
-        checkoutStart = 10; // Ganti sesuai jam pulang Jumat Anda
-        checkoutEnd = 11;   // Ganti sesuai jam pulang Jumat Anda
-    }
         const getAttendanceLocation = () => new Promise((resolve, reject) => {
             if (!navigator.geolocation) {
                 reject(new Error("Geolocation is not supported by your browser."));
@@ -468,16 +459,16 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
             return;
         }
 
- // Pengecekan Absensi
-    if (type === 'in' && (currentHour < settings.checkin_start_hour || currentHour >= settings.checkin_end_hour)) {
-        setNotification({ type: 'error', message: `Absen masuk hanya bisa dilakukan antara pukul ${String(settings.checkin_start_hour).padStart(2, '0')}:00 - ${String(settings.checkin_end_hour).padStart(2, '0')}:00.` });
-        return;
-    }
 
-    if (type === 'out' && (currentHour < settings.checkout_start_hour || currentHour >= settings.checkout_end_hour)) {
-        setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(settings.checkout_start_hour).padStart(2, '0')}:00 - ${String(settings.checkout_end_hour).padStart(2, '0')}:00.` });
-        return;
-    }
+        if (type === 'in' && (currentHour < settings.checkin_start_hour || currentHour >= settings.checkin_end_hour)) {
+            setNotification({ type: 'error', message: `Absen masuk hanya bisa dilakukan antara pukul ${String(settings.checkin_start_hour).padStart(2, '0')}:00 - ${String(settings.checkin_end_hour).padStart(2, '0')}:00.` });
+            return;
+        }
+
+        if (type === 'out' && (currentHour < settings.checkout_start_hour || currentHour >= settings.checkout_end_hour)) {
+            setNotification({ type: 'error', message: `Absen pulang hanya bisa dilakukan antara pukul ${String(settings.checkout_start_hour).padStart(2, '0')}:00 - ${String(settings.checkout_end_hour).padStart(2, '0')}:00.` });
+            return;
+        }
         
         setAttendanceType(type);
         setShowCamera(true);
@@ -570,10 +561,8 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
             {showCamera && <CameraModal onCapture={handleSelfieCapture} onCancel={() => setShowCamera(false)} setNotification={setNotification} />}
             
             <div className="bg-white p-6 rounded-xl shadow-lg">
-               <h2 className="text-2xl font-bold text-gray-800 mb-4">
-  {user?.role === 'teacher' ? 'Dasbor Guru' : 'Dasbor Siswa'}
-</h2>
-                 
+               <h2 className="text-2xl font-bold text-gray-800 mb-4">{user.role === 'teacher' ? "Dasbor Guru" : "Dasbor Siswa"}</h2>
+                
                 {isHoliday && (
                     <div className="text-center p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg font-semibold border border-yellow-300">
                         <CalendarDays size={20} className="inline mr-2" /> Hari ini adalah Hari Libur: {holidayName || 'Tidak ada keterangan'}. Absensi ditutup.
@@ -609,15 +598,7 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                     </div>
                 </div>
                 }
-{/* Laporan Kehadiran Siswa Khusus Guru */}
-{user?.role === 'teacher' && (
-  <div className="mt-8 bg-white p-6 rounded-xl shadow-lg">
-    <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
-      Laporan Kehadiran Seluruh Siswa
-    </h2>
-    <AttendanceReport supabase={supabase} setNotification={setNotification} />
-  </div>
-)}
+
                 {todayAttendance && (
                     <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200 shadow-inner">
                         <h3 className="font-bold text-lg mb-4 text-gray-700">Rekap Absensi Hari Ini ({getLocalDateString()})</h3>
@@ -662,7 +643,7 @@ const StudentDashboard = ({ user, supabase, settings, setNotification, isHoliday
                         </div>
                     </div>
                 )}
-                <div className="text-center text-xs text-gray-400 mt-6 pb-4">
+                <div className="text-center text-xs text-gray-400 mt-4">
                     <p>Created by Abi Nijav</p>
                 </div>
             </div>
@@ -2536,3 +2517,4 @@ const AttendanceReport = ({ supabase, setNotification }) => {
         </div>
     );
 };
+
